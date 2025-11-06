@@ -1,0 +1,133 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+const int sensorPin = A0;
+const int ledPins[7] = {2,3,4,5,6,7,8};
+const int heartbeatLED = 13;
+const int buzzerPin = 9;
+const int windowTime = 10000;
+
+bool printedOnce = false;
+
+int threshold = 520;
+int beatCount = 0;
+unsigned long startTime = 0;
+bool heartbeatDetectedPrev = false;
+
+// Non-blocking timers
+unsigned long ledBuzzerStart = 0;
+unsigned long ledSequenceStart = 0;
+unsigned long ledDuration = 50;       // heartbeat LED & buzzer duration
+unsigned long ledStepDelay = 30;      // each LED step duration
+int ledStep = 0;                      // which LED in sequence
+bool sequenceActive = false;
+bool ledBuzzerActive = false;
+
+// Refractory period to prevent multiple counts per pulse
+unsigned long lastBeatTime = 0;
+unsigned long refractoryPeriod = 120; // ms
+
+void setup() {
+  Serial.begin(9600);
+
+  // LCD
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("Heart Monitor  ");
+  lcd.setCursor(0,1);
+  lcd.print("Beat: 0        ");
+
+  pinMode(heartbeatLED, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  digitalWrite(heartbeatLED, LOW);
+  digitalWrite(buzzerPin, LOW);
+
+  for(int i=0; i<7; i++){
+    pinMode(ledPins[i], OUTPUT);
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  startTime = millis();
+}
+
+void loop() {
+  unsigned long currentTime = millis();
+  int sensorValue = analogRead(sensorPin);
+
+  unsigned long elapsed = currentTime - startTime;
+
+  if(elapsed < 5000){ // 1 minute
+
+    bool heartbeatDetected = sensorValue > threshold;
+
+    // Rising edge detection + refractory period
+    if(heartbeatDetected && !heartbeatDetectedPrev && (currentTime - lastBeatTime > refractoryPeriod)){
+      beatCount++;
+      lastBeatTime = currentTime;
+
+      // Update LCD
+      lcd.setCursor(6,1);
+      lcd.print(beatCount);
+      lcd.print("   "); // clear leftover digits
+
+      // Start heartbeat LED & buzzer
+      digitalWrite(heartbeatLED, HIGH);
+      digitalWrite(buzzerPin, HIGH);
+      ledBuzzerStart = currentTime;
+      ledBuzzerActive = true;
+
+      // Start LED sequence
+      sequenceActive = true;
+      ledStep = 0;
+      ledSequenceStart = currentTime;
+      digitalWrite(ledPins[ledStep], HIGH);
+    }
+
+    heartbeatDetectedPrev = heartbeatDetected;
+
+    // Turn off heartbeat LED & buzzer after ledDuration
+    if(ledBuzzerActive && currentTime - ledBuzzerStart >= ledDuration){
+      digitalWrite(heartbeatLED, LOW);
+      digitalWrite(buzzerPin, LOW);
+      ledBuzzerActive = false;
+    }
+
+    // Animate LED sequence non-blocking
+    if(sequenceActive && currentTime - ledSequenceStart >= ledStepDelay){
+      // Turn off previous LED
+      if(ledStep > 0) digitalWrite(ledPins[ledStep-1], LOW);
+
+      // Move to next LED
+      ledStep++;
+      if(ledStep < 7){
+        digitalWrite(ledPins[ledStep], HIGH);
+        ledSequenceStart = currentTime;
+      } else {
+        // Turn off last LED
+        digitalWrite(ledPins[6], LOW);
+        sequenceActive = false;
+      }
+    }
+
+  } else if(!printedOnce) {
+    // 1 minute over, display total beats
+    lcd.setCursor(0,0);
+    lcd.print("Total Count: "); 
+    lcd.print(beatCount);
+    lcd.print("   "); // clear leftover
+    lcd.setCursor(0,1);
+    lcd.print("                "); // clear second line
+
+    Serial.println(beatCount);
+
+    printedOnce = true;
+  }
+}
+
+
+
+
+
