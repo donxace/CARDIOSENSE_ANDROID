@@ -1,34 +1,55 @@
 import serial
-import csv
+import sqlite3
 import time
 import os
 
-# CSV file name
-file_name = 'bpm_log.csv'
+# SQLite database file
 
-# Create CSV file with header if it doesn't exist
-if not os.path.exists(file_name):
-    with open(file_name, 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(['BPM'])
+
+# Connect to database (creates if not exists)
+conn = sqlite3.connect(r"C:\Users\RYZEN 5 3400G\Desktop\Project\HeartPulse2\heartbeat\heart_data.db")
+cursor = conn.cursor()
+
+# Create table if not exists
+# Columns: id, experiment_id, description, bpm, timestamp
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS bpm_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    experiment_id INTEGER,
+    description TEXT,
+    bpm INTEGER,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+''')
+conn.commit()
 
 # Connect to Arduino
-arduino = serial.Serial('COM18', 9600, timeout=1)
-time.sleep(2)  # wait for Arduino to reset
+arduino = serial.Serial('COM17', 9600, timeout=1)
+time.sleep(2)  # wait for Arduino reset
 
-print("Logging BPM data...\n")
+# Experiment info
+experiment_id = 1
+description = "Heart rate experiment"
 
-# Open CSV in append mode and force flushing
-with open(file_name, 'a', newline='', buffering=1) as file:
-    writer = csv.writer(file)
-    try:
-        while True:
-            line = arduino.readline().decode('utf-8', errors='ignore').strip()
-            if line.isdigit():  # only log numeric BPM
-                bpm = int(line)
-                writer.writerow([bpm*12])
-                file.flush()  # force writing to disk
-                print(f"Saved: {bpm*12}", flush=True)
-    except KeyboardInterrupt:
-        print("\nStopped logging.")
-        arduino.close()
+print("Logging BPM data to SQLite...\n")
+
+try:
+    while True:
+        line = arduino.readline().decode('utf-8', errors='ignore').strip()
+        if line.isdigit():
+            bpm = int(line)
+            bpm_scaled = bpm * 12  # scale if needed
+
+            # Insert into database
+            cursor.execute(
+                "INSERT INTO bpm_log (experiment_id, description, bpm) VALUES (?, ?, ?)",
+                (experiment_id, description, bpm_scaled)
+            )
+            conn.commit()
+
+            print(f"Saved: {bpm_scaled}")
+except KeyboardInterrupt:
+    print("\nStopped logging.")
+finally:
+    arduino.close()
+    conn.close()
