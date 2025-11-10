@@ -31,9 +31,9 @@ def run_heart_logger():
                 print(f"💓 RR # {start}: {rr} ms | BPM: {bpm:.1f}")
 
                 start = start + 1
-                
+
                 # Save BPM to SQLite
-                cursor.execute("INSERT INTO heart_metrics (Heart_Rate) VALUES (?)", (int(bpm),))
+                cursor.execute("INSERT INTO heart_metrics (Heart_Rate, rr_interval) VALUES (?,?)", (int(bpm), rr))
                 conn.commit()
                 continue
 
@@ -50,5 +50,3 @@ def run_heart_logger():
 
     except KeyboardInterrupt:
         print("\nStopped logging.")
-
-run_heart_logger()

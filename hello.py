@@ -6,6 +6,16 @@ import time
 #import arduino_heartlogger as ard
 #import convert_HeartMetricsToLSTMInput as hm_lstm
 
+#ard.run_heart_logger()
+#hm_lstm.run_heartMetrics_lstmInput()
+
+def normalized(mean, standard_dev, x):
+    normal = x*standard_dev+mean
+
+    return normal
+
+
+
 db_path=r"C:\Users\RYZEN 5 3400G\Desktop\Project\HeartPulse2\heart_data.db"
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
@@ -38,15 +48,15 @@ layer_name = 'LSTM1'
 timestep_start = 1
 timestep_end = 5
 
+h_tPrev = np.array([0.0]) 
+c_tPrev = np.array([0.0])
+
 for h in range(1, 4):
 
-    h_tPrev = np.array([0.0]) 
-    c_tPrev = np.array([0.0])
     
-
+    
     for i in range(timestep_start, timestep_end+1):
         timestep = i
-        
         
         cursor.execute("""
             SELECT input_value
@@ -62,21 +72,15 @@ for h in range(1, 4):
         u_f= fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'u_f')
         b_f = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'b_f')
 
-        
-
         ##input gate variables
         w_i = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'w_i')
         u_i = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'u_i')
         b_i = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'b_i')
 
-        
-
         ##output gate variables
         w_o = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'w_o')
         u_o = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'u_o')
         b_o = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'b_o')
-
-        
 
         ##candidate gate variables
         w_ca = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'w_ca')
@@ -179,6 +183,34 @@ for h in range(1, 4):
 
         conn.commit()
 
+        cursor.execute("""
+                SELECT mean
+                FROM lstm_input
+                WHERE timestep = ? AND sequence = ?
+            """, (i, h))
+
+        mean_r = cursor.fetchone()
+        mean = mean_r[0]
+
+        cursor.execute("""
+                SELECT standard_dev
+                FROM lstm_input
+                WHERE timestep = ? AND sequence = ?
+            """, (i, h))
+
+        standard_dev_r = cursor.fetchone()
+        standard_dev = standard_dev_r[0]
+
+        prediction = normalized(mean, standard_dev, float(h_t[0]))
+        target = normalized(mean, standard_dev, float(x_t[0]))
+
+        cursor.execute("""
+            insert into lstm_prediction (sequence, timestep, predicted_value, target_value, mean, standard_dev)
+            values (?,?,?,?,?,?)
+        """, (h, i, prediction, target, float(mean), float(standard_dev)))
+
     print("-----------------------------------")
-    print(f"      PREDICTED VALUE = {h_t.item()}           ")
+    print(f"PREDICTED VALUE (normalized) = {h_t} MS           ")
+    print(f"PREDICTED VALUE (denormalized) = {prediction} MS           ")
+    print(f"TARGET = {target}MS")
     print("-----------------------------------\n\n\n")
