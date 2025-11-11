@@ -44,4 +44,5 @@ def run_heartMetrics_lstmInput():
     for row in cursor.fetchall():
         print(row)
 
-run_heartMetrics_lstmInput()
+#run_heartMetrics_lstmInput()
+

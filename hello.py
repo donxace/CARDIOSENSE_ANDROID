@@ -3,18 +3,21 @@ import sqlite3
 import os
 import time
 
-#import arduino_heartlogger as ard
-#import convert_HeartMetricsToLSTMInput as hm_lstm
+import arduino_heartlogger as ard
+import convert_HeartMetricsToLSTMInput as hm_lstm
+import graph_input
 
-#ard.run_heart_logger()
-#hm_lstm.run_heartMetrics_lstmInput()
+ard.run_heart_logger()
+hm_lstm.run_heartMetrics_lstmInput()
+
+show_prediction = []
+show_timestep = []
+show_sequence = []
 
 def normalized(mean, standard_dev, x):
     normal = x*standard_dev+mean
 
     return normal
-
-
 
 db_path=r"C:\Users\RYZEN 5 3400G\Desktop\Project\HeartPulse2\heart_data.db"
 conn = sqlite3.connect(db_path)
@@ -51,10 +54,13 @@ timestep_end = 5
 h_tPrev = np.array([0.0]) 
 c_tPrev = np.array([0.0])
 
-for h in range(1, 4):
+cursor.execute("select max(sequence) from lstm_input")
+range_rr = cursor.fetchone()[0] + 1
 
-    
-    
+print(range_rr)
+ 
+
+for h in range(1, range_rr):
     for i in range(timestep_start, timestep_end+1):
         timestep = i
         
@@ -64,8 +70,10 @@ for h in range(1, 4):
             WHERE experiment_id = ? and timestep = ? and sequence = ?
         """, (1, timestep, h))
 
+        print(h)
+        print(i)
         rows = cursor.fetchone()
-        x_t = rows
+        x_t = rows[0]
         
         ##forget gate variables
         w_f= fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'w_f')
@@ -192,6 +200,8 @@ for h in range(1, 4):
         mean_r = cursor.fetchone()
         mean = mean_r[0]
 
+        print("mean: ", mean)
+
         cursor.execute("""
                 SELECT standard_dev
                 FROM lstm_input
@@ -199,18 +209,31 @@ for h in range(1, 4):
             """, (i, h))
 
         standard_dev_r = cursor.fetchone()
+        
         standard_dev = standard_dev_r[0]
 
+        print("standard_dev", standard_dev)
+
         prediction = normalized(mean, standard_dev, float(h_t[0]))
-        target = normalized(mean, standard_dev, float(x_t[0]))
+        target = normalized(mean, standard_dev, float(x_t))
 
         cursor.execute("""
             insert into lstm_prediction (sequence, timestep, predicted_value, target_value, mean, standard_dev)
             values (?,?,?,?,?,?)
         """, (h, i, prediction, target, float(mean), float(standard_dev)))
 
+    show_prediction.append(prediction)
     print("-----------------------------------")
     print(f"PREDICTED VALUE (normalized) = {h_t} MS           ")
     print(f"PREDICTED VALUE (denormalized) = {prediction} MS           ")
     print(f"TARGET = {target}MS")
     print("-----------------------------------\n\n\n")
+
+cursor.execute("select rr_interval from heart_metrics")
+rows = cursor.fetchall()
+
+rr = [row[0] for row in rows]
+
+graph_input.graph(rr, show_prediction)
+
+

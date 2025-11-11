@@ -1,7 +1,5 @@
 import sqlite3
 import random
-
-standard_dev
 # Connect to DB
 conn = sqlite3.connect(r"C:\Users\RYZEN 5 3400G\Desktop\Project\HeartPulse2\heart_data.db")
 cur = conn.cursor()
@@ -52,8 +50,3 @@ for timestep in range(1, 6):
     """, rows)
 
     conn.commit()
-    
-
-
-conn.close()
-print("✅ Done inserting rows for timestep 1")
