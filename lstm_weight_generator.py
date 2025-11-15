@@ -1,7 +1,7 @@
 import sqlite3
 import random
 # Connect to DB
-conn = sqlite3.connect(r"C:\Users\RYZEN 5 3400G\Desktop\Project\HeartPulse2\heart_data.db")
+conn = sqlite3.connect(r"C:\Users\HUAWEI\Desktop\HEARTBEAT\heart_data.db")
 cur = conn.cursor()
 
 experiment_id = 1
