@@ -6,8 +6,9 @@ import time
 import arduino_heartlogger as ard
 import convert_HeartMetricsToLSTMInput as hm_lstm
 import graph_input
+import BPTT as bptt
 
-ard.run_heart_logger()
+##ard.run_heart_logger()
 hm_lstm.run_heartMetrics_lstmInput()
 
 show_prediction = []
@@ -174,16 +175,32 @@ for h in range(1, range_rr):
         h_tPrev = h_t
         c_tPrev = c_t
     
-        gates = {
+        gate = {
             "forget_gate": f_t,
             "input_gate": i_t,
             "output_gate": o_t,
             "candidate_gate": ca_t,
             "cell_state": c_t,
-            "hidden_state": h_t
+            "hidden_state": h_t,
+            "dc_next": 0,
+            "dh_next": 0,
+            "c_prev": c_tPrev,
+            "h_prev": h_tPrev,
+            "u_f": u_f,
+            "u_i": u_i,
+            "u_candidate": u_ca,
+            "u_o": u_o
         }
+        
 
-        for table_name, gate_value in gates.items():
+        meow = bptt.backwardPass(gate, 0.6, x_t)
+
+        print("DH NEXT AAAAAAAAAAAAA: ",gate['dh_next'])
+
+        for k, v in meow.items():
+            print(f"{k}: {v}")
+
+        for table_name, gate_value in list(gate.items())[:6]:
             cursor.execute(f"""
                 insert into {table_name} (experiment_id, layer_name, timestep, value)
                 values (?,?,?,?)
