@@ -3,9 +3,9 @@ import sqlite3
 import os
 import time
 
-import arduino_heartlogger as ard
+#import arduino_heartlogger as ard
 import convert_HeartMetricsToLSTMInput as hm_lstm
-import graph_input
+import graph_input as gr
 import BPTT as bptt
 
 ##ard.run_heart_logger()
@@ -20,7 +20,7 @@ def normalized(mean, standard_dev, x):
 
     return normal
 
-db_path=r"C:\Users\RYZEN 5 3400G\Desktop\Project\HeartPulse2\heartbeat\heart_data.db"
+db_path=r"C:\Users\HUAWEI\Desktop\HEARTBEAT\heart_data.db"
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 
@@ -264,6 +264,14 @@ rows = cursor.fetchall()
 
 rr = [row[0] for row in rows]
 
-graph_input.graph(rr, show_prediction)
+for dameyunggruu in rr:
+    print(dameyunggruu)
+
+for dameyunggraa in show_prediction:
+    print(dameyunggraa)
+
+
+gr.animate_rr(rr, show_prediction)
+
 
 
