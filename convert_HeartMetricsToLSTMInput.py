@@ -2,7 +2,7 @@ import sqlite3
 import numpy as np
 
 # Connect to database
-conn = sqlite3.connect(r"C:\Users\RYZEN 5 3400G\Desktop\Project\HeartPulse2\heart_data.db")
+conn = sqlite3.connect(r"C:\Users\RYZEN 5 3400G\Desktop\Project\HeartPulse2\heartbeat\heart_data.db")
 cursor = conn.cursor()
 
 def run_heartMetrics_lstmInput():

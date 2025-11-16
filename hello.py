@@ -20,7 +20,7 @@ def normalized(mean, standard_dev, x):
 
     return normal
 
-db_path=r"C:\Users\RYZEN 5 3400G\Desktop\Project\HeartPulse2\heart_data.db"
+db_path=r"C:\Users\RYZEN 5 3400G\Desktop\Project\HeartPulse2\heartbeat\heart_data.db"
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 
@@ -58,8 +58,26 @@ c_tPrev = np.array([0.0])
 cursor.execute("select max(sequence) from lstm_input")
 range_rr = cursor.fetchone()[0] + 1
 
-print(range_rr)
- 
+##forget gate variables
+w_f= fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'w_f')
+u_f= fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'u_f')
+b_f = fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'b_f')
+
+##input gate variables
+w_i = fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'w_i')
+u_i = fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'u_i')
+b_i = fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'b_i')
+
+##output gate variables
+w_o = fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'w_o')
+u_o = fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'u_o')
+b_o = fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'b_o')
+
+##candidate gate variables
+w_ca = fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'w_ca')
+u_ca = fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'u_ca')
+b_ca = fetch_column('lstm_weights', 'value', experiment_id, layer_name, 1, 'b_ca')
+
 
 for h in range(1, range_rr):
     for i in range(timestep_start, timestep_end+1):
@@ -76,25 +94,7 @@ for h in range(1, range_rr):
         rows = cursor.fetchone()
         x_t = rows[0]
         
-        ##forget gate variables
-        w_f= fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'w_f')
-        u_f= fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'u_f')
-        b_f = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'b_f')
-
-        ##input gate variables
-        w_i = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'w_i')
-        u_i = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'u_i')
-        b_i = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'b_i')
-
-        ##output gate variables
-        w_o = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'w_o')
-        u_o = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'u_o')
-        b_o = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'b_o')
-
-        ##candidate gate variables
-        w_ca = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'w_ca')
-        u_ca = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'u_ca')
-        b_ca = fetch_column('lstm_weights', 'value', experiment_id, layer_name, timestep, 'b_ca')
+        
 
         
 
@@ -197,8 +197,21 @@ for h in range(1, range_rr):
 
         print("DH NEXT AAAAAAAAAAAAA: ",gate['dh_next'])
 
-        for k, v in meow.items():
-            print(f"{k}: {v}")
+        w_f = meow['W_f']
+        u_f = meow['U_f']
+        b_f = meow['B_f']
+
+        w_i = meow['W_i']
+        u_i = meow['U_i']
+        b_i = meow['B_i']
+
+        w_i = meow['W_cand']
+        u_i = meow['U_cand']
+        b_i = meow['B_cand']
+
+        w_i = meow['W_o']
+        u_i = meow['U_o']
+        b_i = meow['B_O']
 
         for table_name, gate_value in list(gate.items())[:6]:
             cursor.execute(f"""
