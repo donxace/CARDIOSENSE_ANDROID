@@ -1,0 +1,21 @@
+
+    <resources>
+        <style name="Theme.HeartSense" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+            <!-- This is your main Activity theme -->
+            <item name="android:statusBarColor">@android:color/transparent</item>
+        </style>
+
+        <style name="Theme.HeartSense.Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+            <!-- Background of splash screen -->
+            <item name="windowSplashScreenBackground">@drawable/splash_background</item>
+
+            <!-- Static logo -->
+            <item name="windowSplashScreenAnimatedIcon">@null</item>
+
+            <!-- Duration while app loads (optional) -->
+            <item name="postSplashScreenTheme">@style/Theme.HeartSense</item>
+        </style>
+    </resources>
+
+
+
