@@ -1,0 +1,169 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <math.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+const int sensorPin = A0;
+const int ledPins[7] = {2,3,4,5,6,7,8};
+const int heartbeatLED = 13;
+const int buzzerPin = 9;
+const int windowTime = 10000;
+
+bool printedOnce = false;
+
+int threshold = 515;
+int beatCount = 0;
+unsigned long startTime = 0;
+bool heartbeatDetectedPrev = false;
+
+// Non-blocking timers
+unsigned long ledBuzzerStart = 0;
+unsigned long ledSequenceStart = 0;
+unsigned long ledDuration = 50;       
+unsigned long ledStepDelay = 30;      
+int ledStep = 0;                      
+bool sequenceActive = false;
+bool ledBuzzerActive = false;
+
+// Refractory period
+unsigned long lastBeatTime = 0;
+unsigned long refractoryPeriod = 115; // ms
+
+// RR interval storage for HRV
+unsigned long rrIntervals[100]; // store last 20 RR intervals
+int rrCount = 0;
+
+void setup() {
+  Serial.begin(9600);
+
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("Heart Monitor  ");
+  lcd.setCursor(0,1);
+  lcd.print("Beat: 0        ");
+
+  pinMode(heartbeatLED, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  digitalWrite(heartbeatLED, LOW);
+  digitalWrite(buzzerPin, LOW);
+
+  for(int i=0; i<7; i++){
+    pinMode(ledPins[i], OUTPUT);
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  startTime = millis();
+}
+
+void loop() {
+  unsigned long currentTime = millis();
+  int sensorValue = analogRead(sensorPin);
+  unsigned long elapsed = currentTime - startTime;
+
+  if(elapsed < 60000){ // measure for 1 minute
+
+    bool heartbeatDetected = sensorValue > threshold;
+
+    if(heartbeatDetected && !heartbeatDetectedPrev && (currentTime - lastBeatTime > refractoryPeriod)){
+      beatCount++;
+      unsigned long rr = (lastBeatTime > 0) ? (currentTime - lastBeatTime) : 0;
+      lastBeatTime = currentTime;
+
+      // Store RR interval (skip the first zero)
+      if(rr > 0 && rrCount < 20) {
+        rrIntervals[rrCount++] = rr;
+      }
+
+      // Update LCD beat count
+      lcd.setCursor(6,1);
+      lcd.print(beatCount);
+      lcd.print("   ");
+
+      // LED and buzzer flash
+      digitalWrite(heartbeatLED, HIGH);
+      digitalWrite(buzzerPin, HIGH);
+      ledBuzzerStart = currentTime;
+      ledBuzzerActive = true;
+
+      // LED sequence animation
+      sequenceActive = true;
+      ledStep = 0;
+      ledSequenceStart = currentTime;
+      digitalWrite(ledPins[ledStep], HIGH);
+
+      // --- Calculate HRV every 5 beats ---
+      if(rrCount >= 5) {
+        float hrv = calculateHRV(rrIntervals, rrCount);
+        Serial.print("HRV (RMSSD): ");
+        Serial.print(hrv);
+        Serial.println(" ms");
+
+        lcd.setCursor(0,0);
+        lcd.print("HRV: ");
+        lcd.print(hrv, 1);
+        lcd.print(" ms    ");
+      }
+    }
+
+    heartbeatDetectedPrev = heartbeatDetected;
+
+    // Turn off heartbeat LED & buzzer
+    if(ledBuzzerActive && currentTime - ledBuzzerStart >= ledDuration){
+      digitalWrite(heartbeatLED, LOW);
+      digitalWrite(buzzerPin, LOW);
+      ledBuzzerActive = false;
+    }
+
+    // Animate LED sequence
+    if(sequenceActive && currentTime - ledSequenceStart >= ledStepDelay){
+      if(ledStep > 0) digitalWrite(ledPins[ledStep-1], LOW);
+      ledStep++;
+      if(ledStep < 7){
+        digitalWrite(ledPins[ledStep], HIGH);
+        ledSequenceStart = currentTime;
+      } else {
+        digitalWrite(ledPins[6], LOW);
+        sequenceActive = false;
+      }
+    }
+
+  } else if(!printedOnce) {
+    // 1 minute done
+    lcd.setCursor(0,0);
+    lcd.print("Total Count: "); 
+    lcd.print(beatCount);
+    lcd.print("   "); 
+    lcd.setCursor(0,1);
+    lcd.print("                "); 
+
+    Serial.print("Total beats in 1 min: ");
+    Serial.println(beatCount);
+
+    if(rrCount >= 5) {
+      float finalHRV = calculateHRV(rrIntervals, rrCount);
+      Serial.print("Final HRV (RMSSD): ");
+      Serial.print(finalHRV);
+      Serial.println(" ms");
+    }
+
+    printedOnce = true;
+  }
+}
+
+/* 🧮 HRV Calculation Function
+   RMSSD = sqrt( (Σ (RR[i+1] - RR[i])²) / (N - 1) )
+*/
+float calculateHRV(unsigned long rr[], int n) {
+  if (n < 2) return 0;
+
+  double sumSqDiff = 0;
+  for (int i = 0; i < n - 1; i++) {
+    double diff = (double)rr[i + 1] - (double)rr[i];
+    sumSqDiff += diff * diff;
+  }
+
+  double meanSqDiff = sumSqDiff / (n - 1);
+  return sqrt(meanSqDiff); // HRV in milliseconds
+}
