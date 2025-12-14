@@ -6,7 +6,7 @@ import com.google.gson.GsonBuilder
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-private const val BASE_URL = " https://tiringly-zealous-brayan.ngrok-free.dev" // your PC IP
+private const val BASE_URL = "http://192.168.1.22/server/" // your PC IP
 
 
 object RetrofitClient {

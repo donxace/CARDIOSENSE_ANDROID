@@ -51,8 +51,8 @@ class MainActivity : ComponentActivity() {
     private var isLoggedIn by mutableStateOf(false)
 
     private val TAG = "ArduinoWiFi"
-    private val arduinoIP = "192.168.254.174"
-    private val arduinoPort = 8080
+    private val arduinoIP = "192.168.1.179"
+    private val arduinoPort = 80
 
     private var socket: Socket? = null
     private var writer: PrintWriter? = null
@@ -64,7 +64,10 @@ class MainActivity : ComponentActivity() {
 
     // Graph data
     private val _dataPoints = mutableStateListOf<Float>()
+
     val dataPoints: List<Float> get() = _dataPoints
+
+    private val arduinoManager = ArduinoManager(this)
 
     // UI text for Arduino command responses
     var statusMessage by mutableStateOf("Press a button to control Arduino")
@@ -82,10 +85,10 @@ class MainActivity : ComponentActivity() {
 
                     // Show Arduino Control UI
                     ArduinoControlApp(
-                        statusMessage = { statusMessage },
-                        dataPoints = { dataPoints },
-                        onSendCommand = { cmd -> sendCommand(cmd) },
-                        reconnect = { reconnect() }
+                        statusMessage = { arduinoManager.statusMessage },
+                        dataPoints = { arduinoManager._dataPoints },
+                        onSendCommand = { cmd -> arduinoManager.sendCommand(cmd) },
+                        reconnect = { arduinoManager.reconnect() }
                     )
                 }
             }
@@ -273,7 +276,7 @@ fun onButton(
     onClick: () -> Unit
 ) {
     Button(onClick = onClick) {
-        Text("Start Monitor")
+        Text("Start")
     }
 }
 
@@ -283,14 +286,14 @@ fun RealTimeLineGraph(data: List<Float>) {
     if (data.isEmpty()) return
 
     // Determine the maximum and minimum values of the data for scaling the Y-axis
-    val maxVal = (data.maxOrNull() ?: 100f) + 10f
-    val minVal = (data.minOrNull() ?: 0f)
+    val maxVal = 900f
+    val minVal = 500f
 
     // Canvas for drawing the graph
     Canvas(
         modifier = Modifier
             .fillMaxWidth() // Take full width
-            .height(200.dp) // Set height
+            .height(140.dp) // Set height
             .background(Color.White) // Background color
             .padding(start = 50.dp, top = 30.dp, bottom = 30.dp, end = 20.dp) // Padding for axis labels
     ) {

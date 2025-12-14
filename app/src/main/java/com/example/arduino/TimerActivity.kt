@@ -42,9 +42,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.colorResource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
@@ -54,14 +59,32 @@ class TimerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val instance = MainActivity()
+        val arduinoManager = ArduinoManager(context = this)
+
+
 
         setContent {
             Dashboard {
+                var isRunning by remember { mutableStateOf(false) }
+                var totalTime = 10 // Or your total time
+                var timeLeft by remember { mutableStateOf(totalTime) }
+                var progress by remember { mutableStateOf(0f) }
+
+                val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+                LaunchedEffect(isRunning) {
+                    while (isRunning && timeLeft > 0) {
+                        delay(1000)
+                        timeLeft -= 1
+                        progress = 1f - (timeLeft / totalTime.toFloat())
+                    }
+                    if (timeLeft == 0) isRunning = false
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(30.dp)
+                        .padding(10.dp)
                         .background(Color.White),
                 ) {
                     Column(
@@ -72,17 +95,6 @@ class TimerActivity : ComponentActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        var timeLeft by remember { mutableStateOf(60) }   // 60 seconds countdown
-                        var progress by remember { mutableStateOf(1f) }   // 1.0 → 0.0
-
-                        // Countdown logic
-                        LaunchedEffect(Unit) {
-                            for (sec in 60 downTo 0) {
-                                timeLeft = sec
-                                progress = sec / 60f   // update progress
-                                delay(1000)
-                            }
-                        }
 
 
                         // UI Circle
@@ -90,40 +102,87 @@ class TimerActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        val heartRateData = listOf(10f, 40f, 67f, 78f)
-
                         Box(modifier = Modifier
-                            .height(300.dp)
+                            .height(150.dp)
+                            .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color.White)
-                            ) {
+                            .padding(top= 20.dp)
 
-                            Row {
-                                Button(onClick = { instance.sendCommand("ON") }) {
-                                    Text("Start Monitor")
+
+                        ) {
+                            RealTimeLineGraph(arduinoManager.dataPoints)
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+
+                        Box(
+                            modifier = Modifier
+                                .height(60.dp)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .padding(horizontal = 3.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Button(
+                                    onClick = { arduinoManager.sendCommand("ON")
+                                              isRunning = true
+                                              arduinoManager.startSession() },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(50.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = colorResource(R.color.header_mine),
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Text("Start")
                                 }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Button(onClick = { instance.sendCommand("OFF") }) {
-                                    Text("Stop Monitor")
+
+                                Spacer(modifier = Modifier.width(5.dp))
+
+                                Button(
+                                    onClick = { arduinoManager.sendCommand("OFF")
+                                        arduinoManager.endSession()
+                                        isRunning = false},
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(50.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = colorResource(R.color.header_mine),
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Text("Stop")
                                 }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Button(onClick = {
-                                    instance.reconnect()
-                                }) {
+
+                                Spacer(modifier = Modifier.width(5.dp))
+
+                                Button(
+                                    onClick = { scope.launch { arduinoManager.reconnect() } },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(50.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = colorResource(R.color.header_mine),
+                                        contentColor = Color.White
+                                    )
+                                ) {
                                     Text("Reconnect")
                                 }
-
                             }
-
-
                         }
                     }
                 }
             }
-
         }
     }
 }
+
 
 @Composable
 fun CircularTimer(
