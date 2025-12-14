@@ -140,12 +140,7 @@ fun LoginScreen(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(
-                painter = painterResource(id = R.drawable.group_1), // your vector drawable
-                contentDescription = "App Logo",
-                modifier = Modifier.size(100.dp).align(Alignment.Start),
-                contentScale = ContentScale.Fit
-            )
+
 
 
             Text(

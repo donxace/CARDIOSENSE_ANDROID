@@ -36,6 +36,36 @@
             android:exported="true"/>
 
         <activity
+            android:name=".DashboardActivity"
+            android:theme="@style/Theme.HeartSense"
+            android:exported="true"/>
+
+        <activity
+            android:name=".HealthScoreActivity"
+            android:theme="@style/Theme.HeartSense"
+            android:exported="true"/>
+
+        <activity
+            android:name=".HomeActivity"
+            android:theme="@style/Theme.HeartSense"
+            android:exported="true"/>
+
+        <activity
+            android:name=".HealthScoreDetailed"
+            android:theme="@style/Theme.HeartSense"
+            android:exported="true"/>
+
+        <activity
+            android:name=".TimerActivity"
+            android:theme="@style/Theme.HeartSense"
+            android:exported="true"/>
+
+        <activity
+            android:name=".TimeDomainFeaturesActivity"
+            android:theme="@style/Theme.HeartSense"
+            android:exported="true"/>
+
+        <activity
             android:name=".SignUpActivity"
             android:theme="@style/Theme.HeartSense"
             android:exported="true"/>
@@ -54,7 +84,6 @@
             android:name=".NewPasswordActivity"
             android:theme="@style/Theme.HeartSense"
             android:exported="true"/>
-        ForgotPasswordActivity
 
         <!-- Main Activity -->
         <activity

@@ -8,4 +8,5 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="orange_mine">#F44F38</color>
+    <color name="header_mine">#8C2327</color>
 </resources>

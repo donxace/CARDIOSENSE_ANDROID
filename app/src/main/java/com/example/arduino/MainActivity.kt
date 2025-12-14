@@ -1,5 +1,7 @@
 package com.example.arduino
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.material3.MaterialTheme
 import android.os.Bundle
 import android.util.Log
@@ -30,6 +32,16 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 
@@ -72,7 +84,8 @@ class MainActivity : ComponentActivity() {
                     ArduinoControlApp(
                         statusMessage = { statusMessage },
                         dataPoints = { dataPoints },
-                        onSendCommand = { cmd -> sendCommand(cmd) }
+                        onSendCommand = { cmd -> sendCommand(cmd) },
+                        reconnect = { reconnect() }
                     )
                 }
             }
@@ -84,7 +97,8 @@ class MainActivity : ComponentActivity() {
     // --------------------------------------------------------------
     // CONNECT TO ARDUINO
     // --------------------------------------------------------------
-    private fun connectToArduino() {
+
+    fun connectToArduino() {
         scope.launch {
             while (isActive) {
                 try {
@@ -141,7 +155,7 @@ class MainActivity : ComponentActivity() {
     // --------------------------------------------------------------
     // RECONNECT
     // --------------------------------------------------------------
-    private suspend fun reconnect() {
+    suspend fun reconnect() {
         closeSocket()
         delay(2000)
         connectToArduino()
@@ -150,7 +164,7 @@ class MainActivity : ComponentActivity() {
     // --------------------------------------------------------------
     // SEND COMMAND TO ARDUINO
     // --------------------------------------------------------------
-    private fun sendCommand(cmd: String) {
+    fun sendCommand(cmd: String) {
         scope.launch {
             try {
                 writer?.println(cmd)
@@ -197,12 +211,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
 @Composable
 fun ArduinoControlApp(
     statusMessage: () -> String,
     dataPoints: () -> List<Float>,
-    onSendCommand: (String) -> Unit
+    onSendCommand: (String) -> Unit,
+    reconnect: suspend () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+
     MaterialTheme {
         Column(
             modifier = Modifier
@@ -225,12 +243,24 @@ fun ArduinoControlApp(
                 Button(onClick = { onSendCommand("OFF") }) {
                     Text("Stop Monitor")
                 }
+                Spacer(modifier = Modifier.width(16.dp))
+                Button(onClick = {
+                    scope.launch { reconnect() } // launch suspend function
+                }) {
+                    Text("Reconnect")
+                }
+
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Live RR intervals list (optional)
             RealTimeLineGraph(dataPoints())
+
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .weight(0.65f)) {
+                LineGraph(data = heartRateData, predicted = null, modifier = Modifier.padding(start = 40.dp, top = 15.dp, bottom = 20.dp, end = 20.dp))
+            }
 
             DataList(dataPoints())
         }
@@ -238,37 +268,64 @@ fun ArduinoControlApp(
 }
 
 @Composable
+fun onButton(
+    onSendCommand: (String) -> Unit
+) {
+    Button(onClick = { onSendCommand("ON") }) {
+        Text("Start Monitor")
+    }
+}
+
+@Composable
 fun RealTimeLineGraph(data: List<Float>) {
+    // If there is no data, do nothing
     if (data.isEmpty()) return
 
+    // Determine the maximum and minimum values of the data for scaling the Y-axis
     val maxVal = (data.maxOrNull() ?: 100f) + 10f
     val minVal = (data.minOrNull() ?: 0f)
 
+    // Canvas for drawing the graph
     Canvas(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp)
-            .border(width = 2.dp, color = Color.Black)
-            .padding(start = 40.dp, bottom = 20.dp) // Space for axis labels
+            .fillMaxWidth() // Take full width
+            .height(200.dp) // Set height
+            .background(Color.White) // Background color
+            .padding(start = 50.dp, top = 30.dp, bottom = 30.dp, end = 20.dp) // Padding for axis labels
     ) {
+        // Horizontal spacing between data points
         val widthStep = size.width / (data.size - 1).coerceAtLeast(1)
+        // Total range of Y values
         val heightRange = maxVal - minVal
 
         // Draw Y-axis lines & labels
-        val ySteps = 5
-        val yStepValue = heightRange / ySteps
-        for (i in 0..ySteps) {
-            val y = size.height - (i / ySteps.toFloat() * size.height)
+        val numberOfLabels = 5
+        val yIncrement = 100f
+
+// Round min and max to nearest multiple of 100
+        val roundedMin = (minVal / yIncrement).toInt() * yIncrement
+        val roundedMax = ((maxVal / yIncrement).toInt() + 1) * yIncrement
+
+// Calculate the spacing between the 5 labels
+        val stepValue = (roundedMax - roundedMin) / (numberOfLabels - 1)
+
+        for (i in 0 until numberOfLabels) {
+            val labelValue = roundedMin + i * stepValue
+            val y = size.height - ((labelValue - minVal) / (maxVal - minVal) * size.height)
+
+            // Draw horizontal grid line
             drawLine(
                 color = Color.LightGray,
-                start = androidx.compose.ui.geometry.Offset(0f, y),
-                end = androidx.compose.ui.geometry.Offset(size.width, y),
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
                 strokeWidth = 1f
             )
+
+            // Draw Y-axis label
             drawContext.canvas.nativeCanvas.apply {
                 drawText(
-                    String.format("%.0f", minVal + i * yStepValue),
-                    -35f,
+                    String.format("%.0f", labelValue),
+                    -26f,
                     y + 5f,
                     android.graphics.Paint().apply {
                         color = android.graphics.Color.BLACK
@@ -279,25 +336,43 @@ fun RealTimeLineGraph(data: List<Float>) {
             }
         }
 
-        // Draw the graph line
+
+        // --- Prepare the full path of the graph line ---
         val path = Path()
         data.forEachIndexed { index, value ->
             val x = index * widthStep
             val y = size.height - ((value - minVal) / heightRange * size.height)
 
-            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            if (index == 0) path.moveTo(x, y) // Move to first point
+            else path.lineTo(x, y) // Draw line to next point
         }
 
-        drawPath(path = path, color = Color.Red, style = Stroke(width = 3f))
-
+        // --- Prepare animated path (currently just same as path) ---
+        val animatedPath = Path()
         data.forEachIndexed { index, value ->
             val x = index * widthStep
-            if(index % 10 == 0) {
+            val y = size.height - ((value - minVal) / heightRange * size.height)
+
+            if (index == 0) animatedPath.moveTo(x, y)
+            else animatedPath.lineTo(x, y)
+        }
+
+        // Draw the graph line
+        drawPath(
+            path = animatedPath,
+            color = Color.Red,
+            style = Stroke(width = 5f) // Thickness of line
+        )
+
+        // --- Draw X-axis labels every 10 points ---
+        data.forEachIndexed { index, value ->
+            val x = index * widthStep
+            if (index % 10 == 0) {
                 drawContext.canvas.nativeCanvas.apply {
                     drawText(
-                        "${index + 1}",
+                        "${index}", // Label
                         x,
-                        size.height + 20f,
+                        size.height + 20f, // Position below the graph
                         android.graphics.Paint().apply {
                             color = android.graphics.Color.BLACK
                             textSize = 30f
@@ -309,6 +384,7 @@ fun RealTimeLineGraph(data: List<Float>) {
         }
     }
 }
+
 @Composable
 fun DataList(data: List<Float>) {
     Column(modifier = Modifier.padding(16.dp)) {
