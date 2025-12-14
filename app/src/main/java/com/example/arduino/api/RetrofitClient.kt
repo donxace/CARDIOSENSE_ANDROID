@@ -6,9 +6,10 @@ import com.google.gson.GsonBuilder
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-object RetrofitClient {
+private const val BASE_URL = " https://tiringly-zealous-brayan.ngrok-free.dev" // your PC IP
 
-    private const val BASE_URL = "http://192.168.1.22/heart_sense/" // your PC IP
+
+object RetrofitClient {
 
     // Create a lenient Gson instance
     private val gson = GsonBuilder()

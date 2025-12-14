@@ -51,8 +51,8 @@ class MainActivity : ComponentActivity() {
     private var isLoggedIn by mutableStateOf(false)
 
     private val TAG = "ArduinoWiFi"
-    private val arduinoIP = "192.168.1.179"
-    private val arduinoPort = 80
+    private val arduinoIP = "192.168.254.174"
+    private val arduinoPort = 8080
 
     private var socket: Socket? = null
     private var writer: PrintWriter? = null
@@ -236,9 +236,10 @@ fun ArduinoControlApp(
 
             // Buttons
             Row {
-                Button(onClick = { onSendCommand("ON") }) {
-                    Text("Start Monitor")
-                }
+                onButton (
+                    onClick = { onSendCommand("ON") }
+                )
+
                 Spacer(modifier = Modifier.width(16.dp))
                 Button(onClick = { onSendCommand("OFF") }) {
                     Text("Stop Monitor")
@@ -269,9 +270,9 @@ fun ArduinoControlApp(
 
 @Composable
 fun onButton(
-    onSendCommand: (String) -> Unit
+    onClick: () -> Unit
 ) {
-    Button(onClick = { onSendCommand("ON") }) {
+    Button(onClick = onClick) {
         Text("Start Monitor")
     }
 }

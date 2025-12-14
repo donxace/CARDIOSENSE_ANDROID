@@ -56,8 +56,6 @@ class TimerActivity : ComponentActivity() {
 
         val instance = MainActivity()
 
-
-
         setContent {
             Dashboard {
                 Box(
@@ -95,11 +93,10 @@ class TimerActivity : ComponentActivity() {
                         val heartRateData = listOf(10f, 40f, 67f, 78f)
 
                         Box(modifier = Modifier
-                            .height(150.dp)
+                            .height(300.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color.White)
                             ) {
-                            RealTimeLineGraph(instance.dataPoints)
 
                             Row {
                                 Button(onClick = { instance.sendCommand("ON") }) {
@@ -111,7 +108,7 @@ class TimerActivity : ComponentActivity() {
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Button(onClick = {
-// launch suspend function
+                                    instance.reconnect()
                                 }) {
                                     Text("Reconnect")
                                 }

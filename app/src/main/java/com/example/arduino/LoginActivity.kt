@@ -63,29 +63,17 @@ class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ArduinoTheme {
-                LoginScreen(
-                    onLoginClick = { email, password ->
-                        if (email == "test@example.com" && password == "1234") {
-                            Toast.makeText(this, "Login Successful", Toast.LENGTH_SHORT).show()
-
-                            val intent = Intent(this, MainActivity::class.java)
-
-                            startActivity(intent)
-
-                            finish()
-                        } else {
-                            Toast.makeText(this, "Invalid Credentials", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onFacebookClick = {
-                        Toast.makeText(this, "Facebook Login Clicked", Toast.LENGTH_SHORT).show()
-                    },
-                    onGoogleClick = {
-                        Toast.makeText(this, "Google Login Clicked", Toast.LENGTH_SHORT).show()
-                    }
-                )
-            }
+            LoginScreen(
+                onLoginClick = { email, password ->
+                    startActivity(Intent(this, HomeActivity::class.java))
+                },
+                onFacebookClick = {
+                    Toast.makeText(this, "Facebook Login Clicked", Toast.LENGTH_SHORT).show()
+                },
+                onGoogleClick = {
+                    Toast.makeText(this, "Google Login Clicked", Toast.LENGTH_SHORT).show()
+                }
+            )
         }
     }
 }
@@ -99,7 +87,7 @@ fun onLoginClick(email: String, password: String, context: Context) {
                     Toast.makeText(context, "Login Successful", Toast.LENGTH_SHORT).show()
 
                     // Navigate to MainActivity
-                    val intent = Intent(context, MainActivity::class.java)
+                    val intent = Intent(context, HomeActivity::class.java)
                     context.startActivity(intent)
                     // Optionally finish LoginActivity if context is Activity
                     if (context is LoginActivity) {
