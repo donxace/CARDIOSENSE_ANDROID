@@ -1,5 +1,6 @@
 package com.example.arduino
 
+import android.content.Intent
 import android.graphics.Paint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -44,6 +45,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.colorResource
@@ -53,32 +55,41 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
+import android.util.Log
+import androidx.compose.ui.platform.LocalContext
+import com.example.arduino.ui.ConnectionIndicator
 
 
 class TimerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val arduinoManager = ArduinoManager(context = this)
+        val TAG = "ArduinoWiFi"
 
 
+        arduinoManager.connect()
+        arduinoManager.init(this)
 
         setContent {
             Dashboard {
                 var isRunning by remember { mutableStateOf(false) }
-                var totalTime = 10 // Or your total time
+
+                val totalTime = 10 // seconds (make this val)
                 var timeLeft by remember { mutableStateOf(totalTime) }
-                var progress by remember { mutableStateOf(0f) }
+                var progress by remember { mutableStateOf(1f) } // 🔴 should start FULL
+
 
                 val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
                 LaunchedEffect(isRunning) {
-                    while (isRunning && timeLeft > 0) {
-                        delay(1000)
-                        timeLeft -= 1
-                        progress = 1f - (timeLeft / totalTime.toFloat())
+                    if (isRunning) {
+                        while (timeLeft > 0) {
+                            delay(1000)
+                            timeLeft--
+                            progress = timeLeft / totalTime.toFloat()
+                        }
+                        isRunning = false // auto-stop at 0
                     }
-                    if (timeLeft == 0) isRunning = false
                 }
 
                 Box(
@@ -96,7 +107,6 @@ class TimerActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Center
                     ) {
 
-
                         // UI Circle
                         CircularTimer(progress = progress, timeLeft = timeLeft)
 
@@ -107,11 +117,17 @@ class TimerActivity : ComponentActivity() {
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color.White)
-                            .padding(top= 20.dp)
-
-
+                            .padding(top= 10.dp)
                         ) {
-                            RealTimeLineGraph(arduinoManager.dataPoints)
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                ConnectionIndicator()
+
+                                Log.d(TAG, "DATA: ${arduinoManager.dataPoints}")
+
+                                Box(modifier = Modifier.fillMaxSize()){
+                                    RealTimeLineGraph(arduinoManager.dataPoints)
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -128,10 +144,16 @@ class TimerActivity : ComponentActivity() {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center
                             ) {
+
                                 Button(
                                     onClick = { arduinoManager.sendCommand("ON")
-                                              isRunning = true
-                                              arduinoManager.startSession() },
+                                            isRunning = true
+                                            arduinoManager.startSession()
+                                            timeLeft = totalTime   // 🔄 reset
+                                            progress = 1f
+
+                                              // 🔄 reset
+                                    },
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(50.dp),
@@ -145,10 +167,26 @@ class TimerActivity : ComponentActivity() {
 
                                 Spacer(modifier = Modifier.width(5.dp))
 
+
                                 Button(
                                     onClick = { arduinoManager.sendCommand("OFF")
+                                        val rrDataCopy = arduinoManager.dataPoints.toFloatArray()
+
                                         arduinoManager.endSession()
-                                        isRunning = false},
+                                        isRunning = false      // 🛑 stop timer
+                                        timeLeft = totalTime  // 🔄 reset timer
+                                        progress = 1f
+
+
+
+                                        val intent = Intent(this@TimerActivity, HomeActivity::class.java)
+                                        intent.putExtra("RR_DATA", rrDataCopy)
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                        startActivity(intent)
+
+                                        Log.d("ArduinoManager", rrDataCopy.joinToString(separator = ", ", prefix = "[", postfix = "]"))
+
+                                        arduinoManager.resetGraphPoints()},
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(50.dp),
@@ -254,4 +292,7 @@ fun CircularTimer(
         )
     }
 }
+
+val rrArray = listOf(700f, 750f, 820f, 690f, 900f)
+
 
