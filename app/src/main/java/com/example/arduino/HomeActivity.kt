@@ -1,10 +1,12 @@
 package com.example.arduino
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -14,7 +16,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,10 +29,49 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+
+
+class HomeActivity : ComponentActivity() {
+
+    private val viewModel: HomeViewModel by viewModels()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        arduinoManager.connect()
+        arduinoManager.init(this)
+
+        // Add data from intent
+        handleIntent(intent)
+
+        setContent {
+            Dashboard {
+                HomeActivityScreen(viewModel.activityList)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Handle new data if activity is already running
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent) {
+        intent.getFloatArrayExtra("RR_DATA")?.toList()?.let { rrData ->
+            // Avoid duplicates
+            if (rrData !in viewModel.activityList) {
+                viewModel.activityList.add(rrData)
+                Log.d("HomeActivity", "RR Data added: $rrData")
+            }
+        }
+    }
+}
+
 
 // ----------------------
 // ArcProgress Composable
@@ -165,21 +205,14 @@ fun ArcProgressScreen(progress: Float) {
 // ----------------------
 // MainActivity
 // ----------------------
-class HomeActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        var date = "Dec 8, 2025"
 
-        super.onCreate(savedInstanceState)
-        setContent {
-            Dashboard {
-                HomeActivityScreen()
-            }
-        }
-    }
+class HomeViewModel : ViewModel() {
+    val activityList = mutableStateListOf<List<Float>>()
+    val predictedList = mutableStateListOf<List<Float>>() // store predicted graphs
 }
 
 @Composable
-fun HomeActivityScreen() {
+fun HomeActivityScreen(activityList: List<List<Float>>) {
     val scrollState = rememberScrollState()
     Column(modifier = Modifier
         .verticalScroll(scrollState)
@@ -218,25 +251,20 @@ fun HomeActivityScreen() {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        ActivityLog()
-
-        Spacer(modifier = Modifier.height(7.dp))
-        ActivityLog()
-
-        Spacer(modifier = Modifier.height(7.dp))
-
-        ActivityLog()
+        activityList.forEach { data ->
+            ActivityLog(lineGraphData = data)
+            Spacer(modifier = Modifier.height(7.dp))
+        }
 
     }
 }
 
 @Composable
-fun ActivityLog() {
+fun ActivityLog(lineGraphData: List<Float>) {
     Box(modifier = Modifier
-        .height(150.7.dp)
         .clip(RoundedCornerShape(16.dp))
         .background(Color.White)
-        .fillMaxWidth()
+        .height(148.dp)
     ) {
         Row(modifier = Modifier
             .fillMaxWidth()
@@ -304,10 +332,15 @@ fun ActivityLog() {
 
             Spacer(modifier = Modifier.width(5.dp))
 
+            val heartRatePredicted = lineGraphData.map { value ->
+                val randomOffset = (-20..20).random()   // random integer between -5 and 5
+                (value + randomOffset).coerceAtLeast(0f)  // ensure no negative values
+            }
+
             Box(modifier = Modifier
                 .fillMaxWidth()
                 .weight(0.65f)) {
-                LineGraph(data = heartRateData, predicted = heartRatePredicted)
+                LineGraph(data = lineGraphData, predicted = heartRatePredicted)
             }
         }
     }
