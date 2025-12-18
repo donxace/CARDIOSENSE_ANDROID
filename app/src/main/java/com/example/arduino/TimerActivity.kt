@@ -117,7 +117,7 @@ class TimerActivity : ComponentActivity() {
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color.White)
-                            .padding(top= 10.dp)
+                            .padding(top = 10.dp)
                         ) {
                             Column(modifier = Modifier.fillMaxSize()) {
                                 ConnectionIndicator()
@@ -173,6 +173,10 @@ class TimerActivity : ComponentActivity() {
                                         val rrDataCopy = arduinoManager.dataPoints.toFloatArray()
 
                                         arduinoManager.endSession()
+
+                                        val startTime = arduinoManager.time.value
+
+                                        Log.d("startTime", "${arduinoManager.time.value}")
                                         isRunning = false      // 🛑 stop timer
                                         timeLeft = totalTime  // 🔄 reset timer
                                         progress = 1f
@@ -181,12 +185,13 @@ class TimerActivity : ComponentActivity() {
 
                                         val intent = Intent(this@TimerActivity, HomeActivity::class.java)
                                         intent.putExtra("RR_DATA", rrDataCopy)
+                                        intent.putExtra("STARTING_TIME", startTime)
                                         intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                                         startActivity(intent)
 
                                         Log.d("ArduinoManager", rrDataCopy.joinToString(separator = ", ", prefix = "[", postfix = "]"))
 
-                                        arduinoManager.resetGraphPoints()},
+                                        arduinoManager.resetCurrentDatas()},
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(50.dp),

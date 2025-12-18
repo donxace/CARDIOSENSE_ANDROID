@@ -50,7 +50,7 @@ class HomeActivity : ComponentActivity() {
 
         setContent {
             Dashboard {
-                HomeActivityScreen(viewModel.activityList)
+                HomeActivityScreen(activityList = viewModel.activityList)
             }
         }
     }
@@ -63,11 +63,9 @@ class HomeActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent) {
         intent.getFloatArrayExtra("RR_DATA")?.toList()?.let { rrData ->
-            // Avoid duplicates
-            if (rrData !in viewModel.activityList) {
-                viewModel.activityList.add(rrData)
-                Log.d("HomeActivity", "RR Data added: $rrData")
-            }
+            val startingTime = intent.getStringExtra("STARTING_TIME") ?: ""
+            viewModel.activityList.add(ActivityRecord(rrData, startingTime))
+            Log.d("HomeActivity", "RR Data added: $rrData at $startingTime")
         }
     }
 }
@@ -206,13 +204,18 @@ fun ArcProgressScreen(progress: Float) {
 // MainActivity
 // ----------------------
 
+data class ActivityRecord(
+    val rrData: List<Float>,
+    val time: String
+)
+
 class HomeViewModel : ViewModel() {
-    val activityList = mutableStateListOf<List<Float>>()
+    val activityList = mutableStateListOf<ActivityRecord>()
     val predictedList = mutableStateListOf<List<Float>>() // store predicted graphs
 }
 
 @Composable
-fun HomeActivityScreen(activityList: List<List<Float>>) {
+fun HomeActivityScreen(activityList: List<ActivityRecord>) {
     val scrollState = rememberScrollState()
     Column(modifier = Modifier
         .verticalScroll(scrollState)
@@ -251,16 +254,19 @@ fun HomeActivityScreen(activityList: List<List<Float>>) {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        activityList.forEach { data ->
-            ActivityLog(lineGraphData = data)
+        activityList.forEach { record ->
+            ActivityLog(
+                lineGraphData = record.rrData,
+                testTime = record.time
+            )
             Spacer(modifier = Modifier.height(7.dp))
         }
-
     }
 }
 
 @Composable
-fun ActivityLog(lineGraphData: List<Float>) {
+fun ActivityLog(lineGraphData: List<Float>,
+    testTime: String) {
     Box(modifier = Modifier
         .clip(RoundedCornerShape(16.dp))
         .background(Color.White)
@@ -280,7 +286,7 @@ fun ActivityLog(lineGraphData: List<Float>) {
                 ) {
 
                     Text(text = "MORNING TEST", fontWeight = FontWeight.Bold)
-                    Text("9:12 AM", fontWeight = FontWeight.Bold)
+                    Text(text = testTime, fontWeight = FontWeight.Bold)
 
                     Spacer(modifier = Modifier.height(8.dp))
                     Image(

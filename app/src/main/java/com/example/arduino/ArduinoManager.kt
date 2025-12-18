@@ -20,6 +20,11 @@ import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+
 import android.content.Context
 import androidx.compose.runtime.remember
 import com.example.arduino.data.AppDatabase
@@ -67,10 +72,19 @@ object arduinoManager {
     var currentSessionId: Long = 0L
         private set
 
-    var currentSessionStartTime: Long = 0L
+    var currentSessionStartTime: Long = 0
         private set
 
-    fun resetGraphPoints() {
+    var startTime = mutableStateOf("")
+        private set
+
+    var time = startTime
+
+    val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())  // 12-hour format
+
+
+    fun resetCurrentDatas() {
+        time.value = ""
         _dataPoints.clear()
         Log.d(TAG, "📉 resetGraphPoints() → graph cleared")
     }
@@ -112,6 +126,10 @@ object arduinoManager {
     fun endSession() {
         val sessionIdToSave = currentSessionId
         val dataToSave = currentSessionData.toList() // snapshot
+
+        startTime.value = sdf.format(Date(sessionIdToSave))
+
+        Log.d("starttime", "${startTime.value}")
 
         // Log all RR intervals
         val rrValuesString = dataToSave.joinToString(separator = ", ") { it.rrValue.toString() }
