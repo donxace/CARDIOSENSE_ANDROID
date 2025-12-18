@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
+        android:name=".ArduinoApp"
         android:networkSecurityConfig="@xml/network_security_config"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -49,6 +50,7 @@
             android:name=".HomeActivity"
             android:theme="@style/Theme.HeartSense"
             android:exported="true"/>
+
 
         <activity
             android:name=".HealthScoreDetailed"

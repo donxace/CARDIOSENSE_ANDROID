@@ -156,7 +156,9 @@ fun TimeDomainFeaturesScreen() {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // ---------------- FIRST BOX ----------------
+        // ---------------- FIRST BOX ----------------'
+
+
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp))
@@ -166,7 +168,7 @@ fun TimeDomainFeaturesScreen() {
                 .padding(20.dp)
         ) {
             Column {
-                Text("SDNN: 20MS", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                Text("RMSSD: 20MS", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
                 Text("Standard Deviation of RR intervals", fontSize = 9.sp)
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -193,7 +195,86 @@ fun TimeDomainFeaturesScreen() {
                 .padding(20.dp)
         ) {
             Column {
-                Text("RMSSD: 20MS", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                Text("NN50 / PNN50: 20MS", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                Text("The short-term HRV measure", fontSize = 9.sp)
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("WEEK 4", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+
+                LineGraph(data = meanRRData, predicted = null)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .fillMaxWidth()
+                .height(250.dp)
+                .padding(20.dp)
+        ) {
+            Column {
+                Text("Heart Rate Variability: 20MS", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                Text("Standard deviation of RR intervals", fontSize = 9.sp)
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("WEEK 4", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+
+                LineGraph(data = meanRRData, predicted = null)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .fillMaxWidth()
+                .height(250.dp)
+                .padding(20.dp)
+        ) {
+            Column {
+                Text("RR Interval: 20MS", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                Text("The short-term HRV measure", fontSize = 9.sp)
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("WEEK 4", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+
+                LineGraph(data = meanRRData, predicted = null)
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .fillMaxWidth()
+                .height(250.dp)
+                .padding(20.dp)
+        ) {
+            Column {
+                Text("BEATS PER MINUTE: 20MS", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
                 Text("The short-term HRV measure", fontSize = 9.sp)
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -221,7 +302,7 @@ fun TimeDomainFeaturesScreen() {
         ) {
             Column {
                 Text("SDNN: 20MS", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
-                Text("Standard deviation of RR intervals", fontSize = 9.sp)
+                Text("The short-term HRV measure", fontSize = 9.sp)
 
                 Spacer(modifier = Modifier.height(10.dp))
 

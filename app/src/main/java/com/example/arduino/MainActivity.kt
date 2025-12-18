@@ -1,5 +1,6 @@
 package com.example.arduino
 
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.material3.MaterialTheme
@@ -67,7 +68,7 @@ class MainActivity : ComponentActivity() {
 
     val dataPoints: List<Float> get() = _dataPoints
 
-    private val arduinoManager = ArduinoManager(this)
+
 
     // UI text for Arduino command responses
     var statusMessage by mutableStateOf("Press a button to control Arduino")
@@ -80,17 +81,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                if (!isLoggedIn) {
-                    // Show Login UI
 
-                    // Show Arduino Control UI
-                    ArduinoControlApp(
-                        statusMessage = { arduinoManager.statusMessage },
-                        dataPoints = { arduinoManager._dataPoints },
-                        onSendCommand = { cmd -> arduinoManager.sendCommand(cmd) },
-                        reconnect = { arduinoManager.reconnect() }
-                    )
-                }
             }
         }
 
@@ -189,6 +180,7 @@ class MainActivity : ComponentActivity() {
         val rr = line.toFloatOrNull() ?: return
         scope.launch(Dispatchers.Main) {
             _dataPoints.add(rr)
+            Log.d("GraphDebug", "Added $rr | size=${_dataPoints.size}")
             if (_dataPoints.size > 200) _dataPoints.removeAt(0)
         }
     }
@@ -342,13 +334,22 @@ fun RealTimeLineGraph(data: List<Float>) {
 
 
         // --- Prepare the full path of the graph line ---
-        val path = Path()
         data.forEachIndexed { index, value ->
             val x = index * widthStep
             val y = size.height - ((value - minVal) / heightRange * size.height)
 
-            if (index == 0) path.moveTo(x, y) // Move to first point
-            else path.lineTo(x, y) // Draw line to next point
+            val gradient = Brush.verticalGradient(
+                colors = listOf(Color.Red, Color.Transparent), // top to bottom
+                startY = y,     // the top of the line
+                endY = size.height // bottom of the line
+            )
+
+            drawLine(
+                brush = gradient,   // use the gradient instead of a solid color
+                start = Offset(x, y),     // top
+                end = Offset(x, size.height), // bottom
+                strokeWidth = 4f
+            )
         }
 
         // --- Prepare animated path (currently just same as path) ---

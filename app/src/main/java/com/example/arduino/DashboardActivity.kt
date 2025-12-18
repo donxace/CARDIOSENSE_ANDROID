@@ -360,7 +360,10 @@ fun Footer(modifier: Modifier = Modifier) {
                 contentDescription = "App Logo",
                 modifier = Modifier.size(40.dp)
                     .clickable{
-                        context.startActivity(Intent(context, HomeActivity::class.java))
+                        context.startActivity(
+                            Intent(context, HomeActivity::class.java)
+                                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        )
                         activity.overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                     },
                 contentScale = ContentScale.Fit,

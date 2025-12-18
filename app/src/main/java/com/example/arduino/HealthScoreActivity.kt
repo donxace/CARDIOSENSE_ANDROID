@@ -52,7 +52,7 @@ import androidx.compose.ui.unit.sp
 import com.example.arduino.DashboardActivity.PieChartData
 
 val heartRateData = listOf(10f, 40f, 67f, 78f)
-val heartRatePredicted = listOf(12f, 38f, 74f, 74f)
+val heartRatePredicted = listOf(818f, 820f, 810f, 825f)
 
 val pieData = listOf(
     PieChartData(20f, Color(0XFF6E4648), "Monday"),
@@ -593,11 +593,12 @@ fun DynamicBar(
     progressColor: Color = Color(0xFFFF0000),
     cornerRadius: Dp = 12.dp
 ) {
-    Box(modifier = Modifier
-        .fillMaxWidth()
-        .height(height)
-        .clip(RoundedCornerShape(cornerRadius))
-        .background(backgroundColor)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(backgroundColor)
     ) {
         Box(
             modifier = Modifier
@@ -611,15 +612,17 @@ fun DynamicBar(
 
 @Composable
 fun LineGraph(
-    data: List<Float>, // data for 4 weeks, values 0f..100f
-    predicted: List<Float>? = null,
+    data: List<Float>, // main data
+    predicted: List<Float>? = null, // optional predicted data
     modifier: Modifier = Modifier.padding(start = 40.dp, top = 15.dp, bottom = 20.dp, end = 20.dp)
 ) {
-    val maxY = 100f
-    val minY = 0f
+    if (data.isEmpty()) return // nothing to draw
+
+    val combined = if (predicted != null) data + predicted else data
+    val maxY = combined.maxOrNull() ?: 100f
+    val minY = combined.minOrNull() ?: 0f
 
     var animateProgress by remember { mutableStateOf(0f) }
-
     val progress by animateFloatAsState(
         targetValue = animateProgress,
         animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
@@ -630,152 +633,125 @@ fun LineGraph(
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        val widthPerPoint = size.width / (data.size - 1)
+        val maxPoints = 10                                                                                                // max points to draw for readability
+        val step = (data.size / maxPoints.toFloat()).coerceAtLeast(1f)
+        val sampledData = mutableListOf<Pair<Int, Float>>()
+        var idx = 0f
+        while (idx < data.size) {
+            sampledData.add(idx.toInt() to data[idx.toInt()])
+            idx += step
+        }
+        val widthPerPoint = if (sampledData.size > 1) size.width / (sampledData.size - 1) else size.width
+
+
         val heightPerUnit = size.height / (maxY - minY)
 
-        // Draw Y-axis lines and labels
+        val yStep = (maxY - minY) / 5f  // 5 horizontal lines
         for (i in 0..5) {
-            val yValue = i * 20f
-            val yPos = size.height - yValue * heightPerUnit
+            val yValue = minY + i * yStep
+            val yPos = size.height - (yValue - minY) * heightPerUnit
             drawLine(
                 color = Color.LightGray,
                 start = Offset(0f, yPos),
                 end = Offset(size.width, yPos),
                 strokeWidth = 1f
             )
-            drawContext.canvas.nativeCanvas.apply {
-                drawText(
-                    "${yValue.toInt()}",
-                    -40f,
-                    yPos + 8f,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.BLACK
-                        textSize = 30f
-                        textAlign = android.graphics.Paint.Align.RIGHT
-                    }
-                )
-            }
+            drawContext.canvas.nativeCanvas.drawText(
+                "${yValue.toInt()}",
+                -40f,
+                yPos + 8f,
+                android.graphics.Paint().apply {
+                    color = android.graphics.Color.BLACK
+                    textSize = 30f
+                    textAlign = android.graphics.Paint.Align.RIGHT
+                }
+            )
         }
-
         // Draw X-axis labels
-        val weeks = (1..data.size).toList()
-        weeks.forEachIndexed { index, week ->
-            val xPos = index * widthPerPoint
-            drawContext.canvas.nativeCanvas.apply {
-                drawText(
-                    week.toString(),
-                    xPos,
-                    size.height + 30f,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.BLACK
-                        textSize = 30f
-                        textAlign = android.graphics.Paint.Align.CENTER
-                    }
+        val xLabels = 5
+        for (i in 0 until xLabels) {
+            val fraction = i / (xLabels - 1f)
+            val xPos = size.width * fraction
+            val dataIndex = (fraction * (data.size - 1)).toInt()
+            drawContext.canvas.nativeCanvas.drawText(
+                (dataIndex + 1).toString(),
+                xPos,
+                size.height + 30f,
+                android.graphics.Paint().apply {
+                    color = android.graphics.Color.BLACK
+                    textSize = 30f
+                    textAlign = android.graphics.Paint.Align.CENTER
+                }
+            )
+        }
+
+
+
+
+        // Draw main line safely
+        if (data.size > 1) {
+            val pointsData = sampledData.map { (i, value) ->
+                Offset(
+                    x = sampledData.indexOfFirst { it.first == i } * widthPerPoint,
+                    y = size.height - (value - minY) * heightPerUnit
                 )
             }
-        }
 
-        // Prepare points
-        val pointsData = data.mapIndexed { index, value ->
-            Offset(index * widthPerPoint, size.height - value * heightPerUnit)
-        }
 
-        val segmentCount = pointsData.size - 1
-        val segmentProgress = progress * segmentCount
-        val currentSegment = segmentProgress.toInt()
-        val segmentFraction = segmentProgress - currentSegment
+            val segmentCount = pointsData.size - 1
+            val segmentProgress = progress * segmentCount
+            val currentSegment = segmentProgress.toInt()
+            val segmentFraction = segmentProgress - currentSegment
 
-        // Draw animated main line
-        for (i in 0 until segmentCount) {
-            val start = pointsData[i]
-            val end = pointsData[i + 1]
+            for (i in 0 until segmentCount) {
+                val start = pointsData[i]
+                val end = pointsData[i + 1]
 
-            when {
-                // Segment not reached yet
-                i > currentSegment -> {
-                    // draw nothing
-                }
-
-                // Segment fully completed
-                i < currentSegment -> {
-                    drawLine(
-                        color = Color.Red,
-                        start = start,
-                        end = end,
-                        strokeWidth = 10f
-                    )
-                }
-
-                // Segment currently animating
-                i == currentSegment -> {
-                    val animatedEnd = Offset(
+                val lineEnd = when {
+                    i < currentSegment -> end
+                    i == currentSegment -> Offset(
                         x = start.x + (end.x - start.x) * segmentFraction,
                         y = start.y + (end.y - start.y) * segmentFraction
                     )
-                    drawLine(
-                        color = Color.Red,
-                        start = start,
-                        end = animatedEnd,
-                        strokeWidth = 10f
-                    )
+                    else -> continue
                 }
+
+                drawLine(color = Color.Red, start = start, end = lineEnd, strokeWidth = 10f)
             }
+
+        } else {
+            // draw a single point if only one data
+            val y = size.height - data[0] * heightPerUnit
+            drawCircle(color = Color.Red, radius = 15f, center = Offset(size.width / 2, y))
         }
 
-        // Draw animated points
-        pointsData.forEachIndexed { index, point ->
-            if (progress >= index / (pointsData.size - 1f)) {
-                drawCircle(color = Color.Red, radius = 15f, center = point)
-            }
-        }
-
-        // Draw predicted line (if any)
-        predicted?.let { predictedData ->
+        // Draw predicted line safely
+        predicted?.takeIf { it.size > 1 }?.let { predictedData ->
             val pointsPredicted = predictedData.mapIndexed { index, value ->
-                Offset(index * widthPerPoint, size.height - value * heightPerUnit)
+                Offset(
+                    x = size.width * index / (predictedData.size - 1).coerceAtLeast(1),
+                    y = size.height - (value - minY) * heightPerUnit
+                )
             }
+            val segmentCount = pointsPredicted.size - 1
+            val segmentProgress = progress * segmentCount
+            val currentSegment = segmentProgress.toInt()
+            val segmentFraction = segmentProgress - currentSegment
 
             for (i in 0 until segmentCount) {
                 val start = pointsPredicted[i]
                 val end = pointsPredicted[i + 1]
 
-                when {
-                    // Segment not reached yet
-                    i > currentSegment -> {
-                        // draw nothing
-                    }
-
-                    // Segment fully completed
-                    i < currentSegment -> {
-                        drawLine(
-                            color = Color.Gray,
-                            start = start,
-                            end = end,
-                            strokeWidth = 10f
-                        )
-                    }
-
-                    // Segment currently animating
-                    i == currentSegment -> {
-                        val animatedEnd = Offset(
-                            x = start.x + (end.x - start.x) * segmentFraction,
-                            y = start.y + (end.y - start.y) * segmentFraction
-                        )
-                        drawLine(
-                            color = Color.Gray,
-                            start = start,
-                            end = animatedEnd,
-                            strokeWidth = 10f
-                        )
-                    }
+                val lineEnd = when {
+                    i < currentSegment -> end
+                    i == currentSegment -> Offset(
+                        x = start.x + (end.x - start.x) * segmentFraction,
+                        y = start.y + (end.y - start.y) * segmentFraction
+                    )
+                    else -> continue
                 }
-            }
 
-
-            pointsPredicted.forEachIndexed { index, point ->
-                if (progress >= index / (pointsPredicted.size - 1f)) {
-                    drawCircle(color = Color.Gray, radius = 15f, center = point)
-                }
+                drawLine(color = Color.Gray, start = start, end = lineEnd, strokeWidth = 10f)
             }
         }
     }

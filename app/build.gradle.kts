@@ -44,6 +44,13 @@ android {
 
 dependencies {
 
+    // ViewModel support for Kotlin (includes viewModels() delegate)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
+// Optional: LiveData support
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2")
+// Optional: Lifecycle runtime
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+
     // Room runtime
     implementation("androidx.room:room-runtime:2.6.0")
 

@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class RRInterval(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val sessionId: Long,
+    val sessionStartTime: Long,
     val timestamp: Long,
     val rrValue: Float
 )

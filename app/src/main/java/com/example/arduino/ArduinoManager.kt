@@ -78,7 +78,7 @@ object arduinoManager {
     // ---------- INITIALIZATION ----------
     fun init(context: Context) {
         appContext = context.applicationContext
-        val db = AppDatabase.getDatabase(appContext)
+        val db = AppDatabase.getDatabase(context.applicationContext)
         rrDao = db.rrIntervalDao()
     }
 
@@ -344,6 +344,8 @@ object arduinoManager {
     // ---------- CLOSE SOCKET ----------
     fun close() {
         try {
+            Log.d("DB_DEBUG", "Closing database!")
+
             reader?.close()
             writer?.close()
             socket?.close()

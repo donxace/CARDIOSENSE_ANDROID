@@ -13,4 +13,20 @@ interface RRIntervalDao {
 
     @Query("SELECT * FROM rr_intervals WHERE sessionId = :sessionId")
     suspend fun getAllBySession(sessionId: Long): List<RRInterval>
+
+    // --- Insert session metrics ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMetrics(metrics: SessionMetricsEntity)
+
+    // --- Get metrics for all sessions ---
+    @Query("SELECT * FROM session_metrics ORDER BY sessionStartTime DESC")
+    suspend fun getAllMetrics(): List<SessionMetricsEntity>
+
+    // --- Get metrics after a certain timestamp (last 7 days) ---
+    @Query("SELECT * FROM session_metrics WHERE sessionStartTime >= :timestamp ORDER BY sessionStartTime DESC")
+    suspend fun getMetricsAfter(timestamp: Long): List<SessionMetricsEntity>
+
+    // --- Optional: Delete old sessions (cleanup) ---
+    @Query("DELETE FROM session_metrics WHERE sessionStartTime < :timestamp")
+    suspend fun deleteOldSessions(timestamp: Long)
 }
