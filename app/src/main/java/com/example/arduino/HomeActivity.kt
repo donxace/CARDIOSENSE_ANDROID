@@ -64,7 +64,9 @@ class HomeActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent) {
         intent.getFloatArrayExtra("RR_DATA")?.toList()?.let { rrData ->
             val startingTime = intent.getStringExtra("STARTING_TIME") ?: ""
-            viewModel.activityList.add(ActivityRecord(rrData, startingTime))
+            val bpm = intent.getFloatExtra("BPM_DATA", 0f)
+            val rrInterval = intent.getFloatExtra("RRINTERVAL_DATA", 0f)
+            viewModel.activityList.add(ActivityRecord(rrData, startingTime, bpm, rrInterval))
             Log.d("HomeActivity", "RR Data added: $rrData at $startingTime")
         }
     }
@@ -206,7 +208,9 @@ fun ArcProgressScreen(progress: Float) {
 
 data class ActivityRecord(
     val rrData: List<Float>,
-    val time: String
+    val time: String,
+    val bpm: Float,
+    val rrInterval: Float
 )
 
 class HomeViewModel : ViewModel() {
@@ -257,7 +261,9 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
         activityList.forEach { record ->
             ActivityLog(
                 lineGraphData = record.rrData,
-                testTime = record.time
+                testTime = record.time,
+                bpm = record.bpm,
+                rrInterval = record.rrInterval
             )
             Spacer(modifier = Modifier.height(7.dp))
         }
@@ -266,7 +272,10 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
 
 @Composable
 fun ActivityLog(lineGraphData: List<Float>,
-    testTime: String) {
+    testTime: String,
+    bpm: Float,
+    rrInterval: Float
+) {
     Box(modifier = Modifier
         .clip(RoundedCornerShape(16.dp))
         .background(Color.White)
@@ -286,6 +295,7 @@ fun ActivityLog(lineGraphData: List<Float>,
                 ) {
 
                     Text(text = "MORNING TEST", fontWeight = FontWeight.Bold)
+
                     Text(text = testTime, fontWeight = FontWeight.Bold)
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -314,7 +324,10 @@ fun ActivityLog(lineGraphData: List<Float>,
                             Column(modifier = Modifier
                                 .fillMaxWidth()) {
                                 Text("BPM", fontSize = 9.sp)
-                                Text("80", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+                                val bpmText = String.format("%.1f", bpm)
+
+                                Text(text = bpmText, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                             }
                         }
 
@@ -325,8 +338,10 @@ fun ActivityLog(lineGraphData: List<Float>,
                         ) {
                             Column(modifier = Modifier
                                 .fillMaxWidth()) {
-                                Text("HRV", fontSize = 9.sp)
-                                Text("99", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+                                val rrIntervalText = String.format("%.1f", rrInterval)
+                                Text("RR INTERVAL", fontSize = 9.sp)
+                                Text(text = rrIntervalText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

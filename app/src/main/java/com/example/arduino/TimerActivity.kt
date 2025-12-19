@@ -176,6 +176,12 @@ class TimerActivity : ComponentActivity() {
 
                                         val startTime = arduinoManager.time.value
 
+                                        val lastBPM = lastBPM
+
+                                        val lastRRInterval = lastAverageRR
+
+
+
                                         Log.d("startTime", "${arduinoManager.time.value}")
                                         isRunning = false      // 🛑 stop timer
                                         timeLeft = totalTime  // 🔄 reset timer
@@ -186,6 +192,8 @@ class TimerActivity : ComponentActivity() {
                                         val intent = Intent(this@TimerActivity, HomeActivity::class.java)
                                         intent.putExtra("RR_DATA", rrDataCopy)
                                         intent.putExtra("STARTING_TIME", startTime)
+                                        intent.putExtra("BPM_DATA", lastBPM)
+                                        intent.putExtra("RRINTERVAL_DATA", lastRRInterval)
                                         intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                                         startActivity(intent)
 
