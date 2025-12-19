@@ -57,6 +57,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import android.util.Log
 import androidx.compose.ui.platform.LocalContext
+import com.example.arduino.arduinoManager.getTimeOfDayFromString
 import com.example.arduino.ui.ConnectionIndicator
 
 
@@ -180,6 +181,15 @@ class TimerActivity : ComponentActivity() {
 
                                         val lastRRInterval = lastAverageRR
 
+                                        val dayTime = arduinoManager.day.value
+
+                                        arduinoManager.day.value = getTimeOfDayFromString(
+                                            arduinoManager.startTime.value)
+
+                                        Log.d("startTime", "Day: ${arduinoManager.day.value}")
+
+
+
 
 
                                         Log.d("startTime", "${arduinoManager.time.value}")
@@ -193,6 +203,8 @@ class TimerActivity : ComponentActivity() {
                                         intent.putExtra("RR_DATA", rrDataCopy)
                                         intent.putExtra("STARTING_TIME", startTime)
                                         intent.putExtra("BPM_DATA", lastBPM)
+                                        intent.putExtra("DAY_DATA", arduinoManager.day.value)
+                                        Log.d("startTime", "Daygaag: ${arduinoManager.day.value}")
                                         intent.putExtra("RRINTERVAL_DATA", lastRRInterval)
                                         intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                                         startActivity(intent)

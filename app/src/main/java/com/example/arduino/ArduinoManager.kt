@@ -24,6 +24,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+
 
 import android.content.Context
 import androidx.compose.runtime.remember
@@ -33,6 +37,7 @@ import com.example.arduino.data.SessionMetricsEntity
 import java.io.ByteArrayOutputStream
 import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
+import java.util.Calendar
 
 // Last session metrics
 var lastAverageRR: Float = 0f
@@ -78,7 +83,13 @@ object arduinoManager {
     var startTime = mutableStateOf("")
         private set
 
+    var day = mutableStateOf("")
+
     var time = startTime
+
+
+
+
 
     val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())  // 12-hour format
 
@@ -123,9 +134,36 @@ object arduinoManager {
         Log.d(TAG, "➕ addRRInterval() | rrValue=$rrValue | size=${currentSessionData.size}")
     }
 
+    fun getTimeOfDayFromString(timeString: String?): String {
+        if (timeString.isNullOrEmpty()) return "Unknown"  // <-- avoid parse error
+
+        return try {
+            val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+            val date = sdf.parse(timeString) ?: return "Unknown"
+
+            val calendar = Calendar.getInstance()
+            calendar.time = date
+            val hour = calendar.get(Calendar.HOUR_OF_DAY)
+
+            when (hour) {
+                in 5..11 -> "MORNING TEST"
+                in 12..16 -> "AFTERNOON TEST"
+                in 17..20 -> "EVENING TEST"
+                else -> "EVENING TEST"
+            }
+        } catch (e: Exception) {
+            "Unknown"  // fallback if parsing fails
+        }
+    }
+
+
+
+
     fun endSession() {
         val sessionIdToSave = currentSessionId
         val dataToSave = currentSessionData.toList() // snapshot
+
+        day.value = getTimeOfDayFromString(startTime.value)
 
         startTime.value = sdf.format(Date(sessionIdToSave))
 

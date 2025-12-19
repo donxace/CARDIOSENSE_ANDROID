@@ -66,8 +66,10 @@ class HomeActivity : ComponentActivity() {
             val startingTime = intent.getStringExtra("STARTING_TIME") ?: ""
             val bpm = intent.getFloatExtra("BPM_DATA", 0f)
             val rrInterval = intent.getFloatExtra("RRINTERVAL_DATA", 0f)
-            viewModel.activityList.add(ActivityRecord(rrData, startingTime, bpm, rrInterval))
+            val dayTime = intent.getStringExtra("DAY_DATA") ?: ""
+            viewModel.activityList.add(ActivityRecord(rrData, startingTime, bpm, rrInterval, dayTime))
             Log.d("HomeActivity", "RR Data added: $rrData at $startingTime")
+            Log.d("HomeActivity", "Day Data added: $dayTime")
         }
     }
 }
@@ -210,7 +212,8 @@ data class ActivityRecord(
     val rrData: List<Float>,
     val time: String,
     val bpm: Float,
-    val rrInterval: Float
+    val rrInterval: Float,
+    val dateTime: String
 )
 
 class HomeViewModel : ViewModel() {
@@ -263,7 +266,8 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
                 lineGraphData = record.rrData,
                 testTime = record.time,
                 bpm = record.bpm,
-                rrInterval = record.rrInterval
+                rrInterval = record.rrInterval,
+                dayTime = record.dateTime
             )
             Spacer(modifier = Modifier.height(7.dp))
         }
@@ -274,7 +278,8 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
 fun ActivityLog(lineGraphData: List<Float>,
     testTime: String,
     bpm: Float,
-    rrInterval: Float
+    rrInterval: Float,
+    dayTime: String
 ) {
     Box(modifier = Modifier
         .clip(RoundedCornerShape(16.dp))
@@ -294,7 +299,7 @@ fun ActivityLog(lineGraphData: List<Float>,
                     verticalArrangement = Arrangement.Center
                 ) {
 
-                    Text(text = "MORNING TEST", fontWeight = FontWeight.Bold)
+                    Text(text = dayTime, fontWeight = FontWeight.Bold)
 
                     Text(text = testTime, fontWeight = FontWeight.Bold)
 
@@ -361,7 +366,7 @@ fun ActivityLog(lineGraphData: List<Float>,
             Box(modifier = Modifier
                 .fillMaxWidth()
                 .weight(0.65f)) {
-                LineGraph(data = lineGraphData, predicted = heartRatePredicted)
+                LineGraph(data = lineGraphData, predicted = null)
             }
         }
     }
