@@ -61,6 +61,7 @@ import com.example.arduino.arduinoManager.getTimeOfDayFromString
 import com.example.arduino.ui.ConnectionIndicator
 
 
+
 class TimerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,7 +76,7 @@ class TimerActivity : ComponentActivity() {
             Dashboard {
                 var isRunning by remember { mutableStateOf(false) }
 
-                val totalTime = 10 // seconds (make this val)
+                val totalTime = 60 // seconds (make this val)
                 var timeLeft by remember { mutableStateOf(totalTime) }
                 var progress by remember { mutableStateOf(1f) } // 🔴 should start FULL
 
@@ -180,8 +181,6 @@ class TimerActivity : ComponentActivity() {
                                         val lastBPM = lastBPM
 
                                         val lastRRInterval = lastAverageRR
-
-                                        val dayTime = arduinoManager.day.value
 
                                         arduinoManager.day.value = getTimeOfDayFromString(
                                             arduinoManager.startTime.value)

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -33,8 +34,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
+import com.example.arduino.data.AppDatabase
+import com.example.arduino.data.SessionMetricsEntity
 import kotlin.math.pow
 import kotlin.math.sqrt
+import com.example.arduino.data.getStartAndEndOfSpecificDay
+import com.example.arduino.data.groupRRToListOfLists
 
 
 class HomeActivity : ComponentActivity() {
@@ -238,6 +243,48 @@ class HomeViewModel : ViewModel() {
 }
 
 @Composable
+fun SessionsForDayComposable() {
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+
+    var rrBySession by remember {
+        mutableStateOf<List<List<Float>>>(emptyList())
+    }
+
+    var sessions by remember { mutableStateOf<List<SessionMetricsEntity>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        sessions = db.sessionMetricsDao().getSessionsByDayId(121925)
+        val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
+
+        Log.d("MWA", "Sessions: ${sessions.size}")
+
+        rrBySession = groupRRToListOfLists(allRR)
+    }
+
+    Column {
+        // Map each RR list to its corresponding session metadata
+        sessions.forEachIndexed { index, session ->
+            val rrList = rrBySession.getOrNull(index) ?: emptyList()
+
+            // Only display if there are RR values
+            if (rrList.isNotEmpty()) {
+                ActivityLog(
+                    lineGraphData = rrList,                        // RR values for graph
+                    testTime = arduinoManager.time.value,  // MM/DD/YY
+                    bpm = session.bpm,
+                    rrInterval = rrList.average().toFloat(),       // avg RR
+                    dayTime = arduinoManager.day.value// Morning/Afternoon/Evening
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+
+
+@Composable
 fun HomeActivityScreen(activityList: List<ActivityRecord>) {
     val scrollState = rememberScrollState()
 
@@ -245,6 +292,8 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
         activityList
     )
 
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
 
     Column(modifier = Modifier
         .verticalScroll(scrollState)
@@ -280,6 +329,10 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
             modifier = Modifier
                 .align(Alignment.Start),
         )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        SessionsForDayComposable()
 
         Spacer(modifier = Modifier.height(10.dp))
 

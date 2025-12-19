@@ -29,4 +29,26 @@ interface RRIntervalDao {
     // --- Optional: Delete old sessions (cleanup) ---
     @Query("DELETE FROM session_metrics WHERE sessionStartTime < :timestamp")
     suspend fun deleteOldSessions(timestamp: Long)
+
+    @Query("SELECT * FROM session_metrics WHERE sessionStartTime = :dayId ORDER BY sessionStartTime ASC")
+    suspend fun getSessionsByDayId(dayId: Int): List<SessionMetricsEntity>
+
+
+    // ✅ Get ONLY rrValue for a given sessionId
+    @Query("""
+        SELECT rrValue 
+        FROM rr_intervals 
+        WHERE timestamp = :sessionId
+        ORDER BY sessionStartTime ASC
+    """)
+    suspend fun getRRValuesForSession(sessionId: Long): List<Float>
+
+    @Query("""
+        SELECT *
+        FROM rr_intervals
+        ORDER BY sessionId ASC, timestamp ASC
+    """)
+    suspend fun getAllRRIntervalsOrdered(): List<RRInterval>
 }
+
+

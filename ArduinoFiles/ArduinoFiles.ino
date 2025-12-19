@@ -104,14 +104,14 @@ void printRRInterval() {
   unsigned long currentTime = millis();
 
   // Stop after 10 seconds
-  if (currentTime - startTime >= 10000) { // 10000 ms = 10 seconds
+  if (currentTime - startTime >= 60000) { // 10000 ms = 10 seconds
     Serial.println("Monitoring finished after 10 seconds.");
     monitorActive = false;
   }
 
   // Only print if the interval has passed
   if (currentTime - lastRRTime >= rrInterval) {
-    rrInterval = random(600, 1000); // simulate next RR interval
+    rrInterval = random(1000, 1200); // simulate next RR interval
 
     Serial.print("RR Interval (ms): ");
     Serial.println(rrInterval);

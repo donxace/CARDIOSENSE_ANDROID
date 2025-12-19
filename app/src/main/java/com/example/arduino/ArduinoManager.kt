@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import com.example.arduino.data.AppDatabase
 import com.example.arduino.data.RRIntervalDao
 import com.example.arduino.data.SessionMetricsEntity
+import com.example.arduino.data.generateDaySessionId
 import java.io.ByteArrayOutputStream
 import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
@@ -120,7 +121,7 @@ object arduinoManager {
 
         val rrInterval = RRInterval(
             sessionId = currentSessionId,
-            timestamp = System.currentTimeMillis(),
+            timestamp = generateDaySessionId(),
             rrValue = rrValue,
             sessionStartTime = currentSessionStartTime
         )
@@ -220,7 +221,7 @@ object arduinoManager {
                         rmssd = rmssd,
                         nn50 = nn50,
                         pnn50 = pnn50,
-                        sessionStartTime = sessionIdToSave
+                        sessionStartTime = generateDaySessionId()
                     )
                 )
             } catch (e: Exception) {
