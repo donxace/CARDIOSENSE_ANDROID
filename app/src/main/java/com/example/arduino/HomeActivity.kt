@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 
 class HomeActivity : ComponentActivity() {
@@ -70,6 +72,10 @@ class HomeActivity : ComponentActivity() {
             viewModel.activityList.add(ActivityRecord(rrData, startingTime, bpm, rrInterval, dayTime))
             Log.d("HomeActivity", "RR Data added: $rrData at $startingTime")
             Log.d("HomeActivity", "Day Data added: $dayTime")
+            viewModel.activityList.forEachIndexed { index, record ->
+                Log.d("HomeViewModel", "Record #$index: $record")
+            }
+
         }
     }
 }
@@ -209,12 +215,22 @@ fun ArcProgressScreen(progress: Float) {
 // ----------------------
 
 data class ActivityRecord(
-    val rrData: List<Float>,
-    val time: String,
-    val bpm: Float,
-    val rrInterval: Float,
-    val dateTime: String,
-)
+    val rrData: List<Float>,   // RR intervals in ms
+    val time: String,          // e.g., "Morning"
+    val bpm: Float,            // Average BPM for the session
+    val rrInterval: Float,     // Average RR interval in ms
+    val dateTime: String       // Timestamp
+) {
+    /**
+     * Compute RMSSD from rrData for HRV
+     */
+    val rmssd: Float
+        get() {
+            if (rrData.size < 2) return 0f
+            val diffSquared = rrData.zipWithNext { a, b -> (b - a).pow(2) }
+            return sqrt(diffSquared.average().toFloat())
+        }
+}
 
 class HomeViewModel : ViewModel() {
     val activityList = mutableStateListOf<ActivityRecord>()
@@ -226,12 +242,7 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
     val scrollState = rememberScrollState()
 
     val healthScore =  HealthScoreCalculator.calculate(
-        bpm = lastBPM,
-        averageRR = lastAverageRR,
-        sdnn = lastSDNN,
-        rmssd = lastRMSSD,
-        nn50 = lastNN50,
-        pnn50 = lastPNN50
+        activityList
     )
 
 

@@ -190,17 +190,9 @@ class TimerActivity : ComponentActivity() {
 
                                         Log.d("ahha", "bpm: $lastBPM, RR: $lastAverageRR, SDNN: $lastSDNN, RMSSD: $lastRMSSD, NN50: $lastNN50, PPN50: $lastPNN50")
 
-                                            val healthScore = HealthScoreCalculator.calculate(
-                                                bpm = lastBPM,
-                                                averageRR = lastAverageRR,
-                                                sdnn = lastSDNN,
-                                                rmssd = lastRMSSD,
-                                                nn50 = lastNN50,
-                                                pnn50 = lastPNN50
-                                            )
 
 
-                                        Log.d("ahha", "$healthScore")
+
 
 
                                         Log.d("startTime", "${arduinoManager.time.value}")
@@ -215,7 +207,6 @@ class TimerActivity : ComponentActivity() {
                                         intent.putExtra("STARTING_TIME", startTime)
                                         intent.putExtra("BPM_DATA", lastBPM)
                                         intent.putExtra("DAY_DATA", arduinoManager.day.value)
-                                        intent.putExtra("HEALTHSCORE_DATA", healthScore)
                                         Log.d("startTime", "Daygaag: ${arduinoManager.day.value}")
                                         intent.putExtra("RRINTERVAL_DATA", lastRRInterval)
                                         intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
