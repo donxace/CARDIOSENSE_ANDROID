@@ -213,7 +213,7 @@ data class ActivityRecord(
     val time: String,
     val bpm: Float,
     val rrInterval: Float,
-    val dateTime: String
+    val dateTime: String,
 )
 
 class HomeViewModel : ViewModel() {
@@ -224,6 +224,17 @@ class HomeViewModel : ViewModel() {
 @Composable
 fun HomeActivityScreen(activityList: List<ActivityRecord>) {
     val scrollState = rememberScrollState()
+
+    val healthScore =  HealthScoreCalculator.calculate(
+        bpm = lastBPM,
+        averageRR = lastAverageRR,
+        sdnn = lastSDNN,
+        rmssd = lastRMSSD,
+        nn50 = lastNN50,
+        pnn50 = lastPNN50
+    )
+
+
     Column(modifier = Modifier
         .verticalScroll(scrollState)
         .padding(top = 20.dp, bottom = 30.dp, start = 20.dp, end = 20.dp)
@@ -247,7 +258,7 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
         Spacer(modifier = Modifier.height(20.dp))
 
 
-        ArcProgressScreen(progress = 0.75f)
+        ArcProgressScreen(progress = healthScore / 100f)
 
         Spacer(modifier = Modifier.height(10.dp))
 
