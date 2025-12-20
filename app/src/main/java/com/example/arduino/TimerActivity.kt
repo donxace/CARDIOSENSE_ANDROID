@@ -196,6 +196,7 @@ class TimerActivity : ComponentActivity() {
 
                                         Log.d("startTime", "${arduinoManager.time.value}")
                                         isRunning = false      // 🛑 stop timer
+
                                         timeLeft = totalTime  // 🔄 reset timer
                                         progress = 1f
 

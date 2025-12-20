@@ -1,3 +1,4 @@
+
 package com.example.arduino
 
 import android.content.Intent
@@ -40,6 +41,8 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 import com.example.arduino.data.getStartAndEndOfSpecificDay
 import com.example.arduino.data.groupRRToListOfLists
+import com.example.arduino.data.formatSessionTime
+import com.example.arduino.data.getTimeOfDayMessage
 
 
 class HomeActivity : ComponentActivity() {
@@ -254,7 +257,7 @@ fun SessionsForDayComposable() {
     var sessions by remember { mutableStateOf<List<SessionMetricsEntity>>(emptyList()) }
 
     LaunchedEffect(Unit) {
-        sessions = db.sessionMetricsDao().getSessionsByDayId(121925)
+        sessions = db.sessionMetricsDao().getSessionsByDayId(122025)
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
 
         Log.d("MWA", "Sessions: ${sessions.size}")
@@ -271,17 +274,17 @@ fun SessionsForDayComposable() {
             if (rrList.isNotEmpty()) {
                 ActivityLog(
                     lineGraphData = rrList,                        // RR values for graph
-                    testTime = arduinoManager.time.value,  // MM/DD/YY
+                    testTime = formatSessionTime(session.sessionId),  // MM/DD/YY
                     bpm = session.bpm,
                     rrInterval = rrList.average().toFloat(),       // avg RR
-                    dayTime = arduinoManager.day.value// Morning/Afternoon/Evening
+                    dayTime = getTimeOfDayMessage(session.sessionId)// Morning/Afternoon/Evening
                 )
+                Log.d("time123", "${formatSessionTime(session.sessionId)}")
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
 }
-
 
 
 @Composable
@@ -374,11 +377,10 @@ fun ActivityLog(lineGraphData: List<Float>,
                     verticalArrangement = Arrangement.Center
                 ) {
 
-                    Text(text = dayTime, fontWeight = FontWeight.Bold)
+                    Text(text = dayTime, fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
                     Text(text = testTime, fontWeight = FontWeight.Bold)
 
-                    Spacer(modifier = Modifier.height(8.dp))
                     Image(
                         painter = painterResource(id = R.drawable.vector),
                         contentDescription = "Arrow",
@@ -407,7 +409,7 @@ fun ActivityLog(lineGraphData: List<Float>,
 
                                 val bpmText = String.format("%.1f", bpm)
 
-                                Text(text = bpmText, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                Text(text = bpmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             }
                         }
 
@@ -421,7 +423,7 @@ fun ActivityLog(lineGraphData: List<Float>,
 
                                 val rrIntervalText = String.format("%.1f", rrInterval)
                                 Text("RR INTERVAL", fontSize = 9.sp)
-                                Text(text = rrIntervalText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                Text(text = rrIntervalText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

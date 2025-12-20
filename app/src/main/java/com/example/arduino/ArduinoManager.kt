@@ -57,7 +57,7 @@ object arduinoManager {
     // ---------- CONFIG ----------
     private lateinit var appContext: Context
     private val TAG = "ArduinoWiFi"
-    private val ip = "192.168.1.179"
+    private val ip = "192.168.100.175"
     private val port = 80
 
     // ---------- COROUTINE & SOCKET ----------

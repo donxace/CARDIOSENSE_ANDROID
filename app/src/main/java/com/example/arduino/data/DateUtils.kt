@@ -1,9 +1,11 @@
 package com.example.arduino.data
 
+import android.util.Log
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 fun getStartAndEndOfSpecificDay(year: Int, month: Int, day: Int): Pair<Long, Long> {
     val cal = Calendar.getInstance()
@@ -20,6 +22,11 @@ fun getStartAndEndOfSpecificDay(year: Int, month: Int, day: Int): Pair<Long, Lon
     return Pair(startOfDay, endOfDay)
 }
 
+fun formatSessionTime(sessionId: Long): String {
+    val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+    return sdf.format(Date(sessionId))
+}
+
 fun generateDaySessionId(date: Date = Date()): Long {
     // Format date as MMddyy
     val sdf = SimpleDateFormat("MMddyy", Locale.getDefault())
@@ -28,3 +35,14 @@ fun generateDaySessionId(date: Date = Date()): Long {
 
 }
 
+fun getTimeOfDayMessage(sessionId: Long): String {
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = sessionId
+    val hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
+
+    return when (hourOfDay) {
+        in 0..11 -> "MORNING TEST"
+        in 12..17 -> "AFTERNOON TEST"
+        else -> "EVENING TEST"
+    }
+}

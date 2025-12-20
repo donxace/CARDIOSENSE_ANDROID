@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
     private var isLoggedIn by mutableStateOf(false)
 
     private val TAG = "ArduinoWiFi"
-    private val arduinoIP = "192.168.1.179"
+    private val arduinoIP = "172.20.10.4"
     private val arduinoPort = 80
 
     private var socket: Socket? = null
@@ -78,10 +78,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            SessionsForDayComposable()
+            startActivity(Intent(this, TimerActivity::class.java))
         }
-
-        connectToArduino()
     }
 
     // --------------------------------------------------------------
