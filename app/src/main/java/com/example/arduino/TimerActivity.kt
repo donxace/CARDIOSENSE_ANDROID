@@ -189,11 +189,6 @@ class TimerActivity : ComponentActivity() {
 
                                         Log.d("ahha", "bpm: $lastBPM, RR: $lastAverageRR, SDNN: $lastSDNN, RMSSD: $lastRMSSD, NN50: $lastNN50, PPN50: $lastPNN50")
 
-
-
-
-
-
                                         Log.d("startTime", "${arduinoManager.time.value}")
                                         isRunning = false      // 🛑 stop timer
 

@@ -43,6 +43,7 @@ import com.example.arduino.data.getStartAndEndOfSpecificDay
 import com.example.arduino.data.groupRRToListOfLists
 import com.example.arduino.data.formatSessionTime
 import com.example.arduino.data.getTimeOfDayMessage
+import kotlin.toString
 
 
 class HomeActivity : ComponentActivity() {
@@ -256,6 +257,72 @@ fun SessionsForDayComposable() {
 
     var sessions by remember { mutableStateOf<List<SessionMetricsEntity>>(emptyList()) }
 
+    // Store activity records here
+    var activityRecords by remember { mutableStateOf<List<ActivityRecord>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        sessions = db.sessionMetricsDao().getSessionsByDayId(122025)
+        val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
+
+        Log.d("MWA", "Sessions: ${sessions.size}")
+
+        rrBySession = groupRRToListOfLists(allRR)
+
+        // Create and store activity records
+        activityRecords = sessions.mapIndexedNotNull { index, session ->
+            val rrList = rrBySession.getOrNull(index) ?: emptyList()
+
+            if (rrList.isNotEmpty()) {
+                ActivityRecord(
+                    rrData = rrList,
+                    time = getTimeOfDayMessage(session.sessionId),
+                    bpm = session.bpm,
+                    rrInterval = rrList.average().toFloat(),
+                    dateTime = formatSessionTime(session.sessionId)
+                )
+            } else {
+                null
+            }
+        }
+
+        // Log all records
+        activityRecords.forEachIndexed { index, record ->
+            Log.d("ActivityRecord", """
+                Record $index:
+                time: ${record.time}
+                dateTime: ${record.dateTime}
+                bpm: ${record.bpm}
+                rrInterval: ${record.rrInterval}
+                rmssd: ${record.rmssd}
+            """.trimIndent())
+        }
+    }
+
+    Column {
+        // Display using stored records
+        activityRecords.forEach { record ->
+            ActivityLog(
+                lineGraphData = record.rrData,
+                testTime = record.dateTime,
+                bpm = record.bpm,
+                rrInterval = record.rrInterval,
+                dayTime = record.time
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+@Composable
+fun SessionsForDayToActivityList() {
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+
+    var rrBySession by remember {
+        mutableStateOf<List<List<Float>>>(emptyList())
+    }
+
+    var sessions by remember { mutableStateOf<List<SessionMetricsEntity>>(emptyList()) }
+
     LaunchedEffect(Unit) {
         sessions = db.sessionMetricsDao().getSessionsByDayId(122025)
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
@@ -272,13 +339,14 @@ fun SessionsForDayComposable() {
 
             // Only display if there are RR values
             if (rrList.isNotEmpty()) {
-                ActivityLog(
-                    lineGraphData = rrList,                        // RR values for graph
-                    testTime = formatSessionTime(session.sessionId),  // MM/DD/YY
+                ActivityRecord(
+                    rrData = rrList,
+                    time = formatSessionTime(session.sessionId),
                     bpm = session.bpm,
                     rrInterval = rrList.average().toFloat(),       // avg RR
-                    dayTime = getTimeOfDayMessage(session.sessionId)// Morning/Afternoon/Evening
+                    dateTime = getTimeOfDayMessage(session.sessionId)
                 )
+
                 Log.d("time123", "${formatSessionTime(session.sessionId)}")
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -286,17 +354,35 @@ fun SessionsForDayComposable() {
     }
 }
 
-
 @Composable
 fun HomeActivityScreen(activityList: List<ActivityRecord>) {
     val scrollState = rememberScrollState()
 
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+
+    SessionsForDayToActivityList()
+
+    // Log all activity records
+    Log.d("HomeActivity", "Total Activity Records: ${activityList.size}")
+
+    activityList.forEachIndexed { index, record ->
+        Log.d("HomeActivity", """
+            =====================================
+            Record ${index + 1}/${activityList.size}:
+            - Time: ${record.time}
+            - DateTime: ${record.dateTime}
+            - BPM: ${record.bpm}
+            - RR Interval: ${record.rrInterval}
+            - RR Data Size: ${record.rrData.size}
+            - RMSSD: ${record.rmssd}
+            =====================================
+        """.trimIndent())
+    }
+
     val healthScore =  HealthScoreCalculator.calculate(
         activityList
     )
-
-    val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
 
     Column(modifier = Modifier
         .verticalScroll(scrollState)
@@ -373,8 +459,8 @@ fun ActivityLog(lineGraphData: List<Float>,
                 contentAlignment = Alignment.Center
             ) {
                 Column(modifier = Modifier
-                    .fillMaxWidth(),
-                    verticalArrangement = Arrangement.Center
+                    .wrapContentWidth(),  // Change from fillMaxWidth() to wrapContentWidth()
+                    verticalArrangement = Arrangement.Center// Add this
                 ) {
 
                     Text(text = dayTime, fontWeight = FontWeight.Bold, fontSize = 16.sp)
