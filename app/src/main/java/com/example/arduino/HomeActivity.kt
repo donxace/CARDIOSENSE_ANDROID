@@ -35,17 +35,23 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.lifecycleScope
+import androidx.room.PrimaryKey
 import com.example.arduino.data.AppDatabase
+import com.example.arduino.data.RRIntervalDao
 import com.example.arduino.data.SessionMetricsEntity
 import kotlin.math.pow
 import kotlin.math.sqrt
 import com.example.arduino.data.getStartAndEndOfSpecificDay
 import com.example.arduino.data.groupRRToListOfLists
 import com.example.arduino.data.formatSessionTime
+import com.example.arduino.data.generateDaySessionId
 import com.example.arduino.data.getTimeOfDayMessage
+import kotlinx.coroutines.launch
+import kotlin.random.Random
 import kotlin.toString
 
-
+val date: Int = generateDaySessionId().toInt()
 class HomeActivity : ComponentActivity() {
 
     private val viewModel: HomeViewModel by viewModels()
@@ -53,9 +59,15 @@ class HomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+
         arduinoManager.connect()
         arduinoManager.init(this)
 
+
+        lifecycleScope.launch {
+            val db = AppDatabase.getDatabase(this@HomeActivity)
+            insertFakeSessionData(db)
+        }
 
         // Add data from intent
         handleIntent(intent)
@@ -272,7 +284,7 @@ fun SessionsForDayComposable() {
     var allRecords by remember { mutableStateOf<List<AllRecords>>(emptyList()) }
 
     LaunchedEffect(Unit) {
-        sessions = db.sessionMetricsDao().getSessionsByDayId(122225)
+        sessions = db.sessionMetricsDao().getSessionsByDayId(date)
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
 
         Log.d("MWA", "Sessions: ${sessions.size}")
@@ -358,7 +370,7 @@ fun SessionsForDayToActivityList() {
     var sessions by remember { mutableStateOf<List<SessionMetricsEntity>>(emptyList()) }
 
     LaunchedEffect(Unit) {
-        sessions = db.sessionMetricsDao().getSessionsByDayId(122025)
+        sessions = db.sessionMetricsDao().getSessionsByDayId(date)
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
 
         Log.d("MWA", "Sessions: ${sessions.size}")
@@ -399,7 +411,7 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
 
     // Load records and calculate health score
     LaunchedEffect(Unit) {
-        val sessions = db.sessionMetricsDao().getSessionsByDayId(122225)
+        val sessions = db.sessionMetricsDao().getSessionsByDayId(date)
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
         val rrBySession = groupRRToListOfLists(allRR)
 
@@ -572,5 +584,25 @@ fun ActivityLog(lineGraphData: List<Float>,
                 LineGraph(data = lineGraphData, predicted = null)
             }
         }
+    }
+}
+
+suspend fun insertFakeSessionData(db: AppDatabase) {
+    val dao = db.rrIntervalDao()
+
+    // Generate multiple fake sessions
+    repeat(5) { index ->
+        dao.insertMetrics(
+            SessionMetricsEntity(
+                sessionId = index.toLong() + 1,
+                sessionStartTime = 122625L, // Same day
+                bpm = (65..80).random().toFloat(),
+                sdnn = (40..60).random().toFloat(),
+                rmssd = (35..50).random().toFloat(),
+                nn50 = (100..150).random(),
+                pnn50 = Random.nextFloat() * (20f - 10f) + 10f,  // Random between 10f and 20f
+                avgRR = Random.nextFloat() * (900f - 750f) + 750f  // Random between 750f and 900f
+            )
+        )
     }
 }
