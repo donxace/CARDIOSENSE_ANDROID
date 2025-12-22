@@ -52,6 +52,8 @@ import com.example.arduino.data.formatSessionTime
 import com.example.arduino.data.generateDaySessionId
 import com.example.arduino.data.getTimeOfDayMessage
 import com.example.arduino.data.incrementDate
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.util.Date
 import kotlin.random.Random
@@ -64,7 +66,6 @@ class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
 
         arduinoManager.connect()
         arduinoManager.init(this)
@@ -89,6 +90,13 @@ class HomeActivity : ComponentActivity() {
         super.onNewIntent(intent)
         // Handle new data if activity is already running
         handleIntent(intent)
+
+        intent?.let {
+            val refresh = it.getBooleanExtra("REFRESH_SESSIONS", false)
+            if (refresh) {
+                viewModel.refreshSessions() // ✅ increments trigger again
+            }
+        }
     }
 
     private fun handleIntent(intent: Intent) {
@@ -282,6 +290,12 @@ class HomeViewModel : ViewModel() {
     fun decrementDate() {
         selectedDate = decrementDate(selectedDate)
     }
+    private val _refreshTrigger = MutableStateFlow(0)
+    val refreshTrigger: StateFlow<Int> = _refreshTrigger
+
+    fun refreshSessions() {
+        _refreshTrigger.value += 1
+    }
 }
 
 @Composable
@@ -290,6 +304,7 @@ fun SessionsForDayComposable(viewModel: HomeViewModel) {
     val db = AppDatabase.getDatabase(context)
 
     val date = viewModel.selectedDate
+    val refreshTrigger by viewModel.refreshTrigger.collectAsState()
 
     var rrBySession by remember {
         mutableStateOf<List<List<Float>>>(emptyList())
@@ -302,7 +317,7 @@ fun SessionsForDayComposable(viewModel: HomeViewModel) {
     var activityRecords by remember { mutableStateOf<List<ActivityRecord>>(emptyList()) }
     var allRecords by remember { mutableStateOf<List<AllRecords>>(emptyList()) }
 
-    LaunchedEffect(viewModel.selectedDate) {
+    LaunchedEffect(viewModel.selectedDate, refreshTrigger) {
 
         sessions = db.sessionMetricsDao().getSessionsByDayId(formatDateToMMDDYY(viewModel.selectedDate).toInt())
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
@@ -366,7 +381,7 @@ fun SessionsForDayComposable(viewModel: HomeViewModel) {
 
     Column {
         // Display using stored records
-        activityRecords.forEach { record ->
+        allRecords.forEach { record ->
             ActivityLog(
                 lineGraphData = record.rrData,
                 testTime = record.dateTime,
@@ -431,6 +446,8 @@ fun HomeActivityScreen(
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
 
+    val refreshTrigger by viewModel.refreshTrigger.collectAsState()
+
     // State for DB records
     var allActivityRecords by remember { mutableStateOf<List<ActivityRecord>>(emptyList()) }
 
@@ -438,7 +455,7 @@ fun HomeActivityScreen(
     val accumulatedRecords = remember { mutableStateListOf<ActivityRecord>() }
 
     // Load DB records whenever selectedDate changes
-    LaunchedEffect(viewModel.selectedDate) {
+    LaunchedEffect(viewModel.selectedDate, refreshTrigger) {
         val sessions = db.sessionMetricsDao()
             .getSessionsByDayId(formatDateToMMDDYY(viewModel.selectedDate).toInt())
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
@@ -531,17 +548,6 @@ fun HomeActivityScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Display all accumulated records
-        accumulatedRecords.forEach { record ->
-            ActivityLog(
-                lineGraphData = record.rrData,
-                testTime = record.time,
-                bpm = record.bpm,
-                rrInterval = record.rrInterval,
-                dayTime = record.dateTime
-            )
-            Spacer(modifier = Modifier.height(7.dp))
-        }
     }
 }
 

@@ -63,6 +63,8 @@ import com.example.arduino.ui.ConnectionIndicator
 
 
 class TimerActivity : ComponentActivity() {
+    val viewModel: HomeViewModel = HomeViewModel() // if in same NavGraph scope
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -71,6 +73,8 @@ class TimerActivity : ComponentActivity() {
 
         arduinoManager.connect()
         arduinoManager.init(this)
+
+
 
         setContent {
             Dashboard {
@@ -195,9 +199,10 @@ class TimerActivity : ComponentActivity() {
                                         timeLeft = totalTime  // 🔄 reset timer
                                         progress = 1f
 
-
+                                        viewModel.refreshSessions()
 
                                         val intent = Intent(this@TimerActivity, HomeActivity::class.java)
+                                        intent.putExtra("REFRESH_SESSIONS", true)
                                         intent.putExtra("RR_DATA", rrDataCopy)
                                         intent.putExtra("STARTING_TIME", startTime)
                                         intent.putExtra("BPM_DATA", lastBPM)
@@ -208,6 +213,8 @@ class TimerActivity : ComponentActivity() {
                                         startActivity(intent)
 
                                         Log.d("ArduinoManager", rrDataCopy.joinToString(separator = ", ", prefix = "[", postfix = "]"))
+
+                                        viewModel.refreshSessions()
 
                                         arduinoManager.resetCurrentDatas()},
                                     modifier = Modifier
