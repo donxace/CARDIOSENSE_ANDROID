@@ -56,6 +56,7 @@ class HomeActivity : ComponentActivity() {
         arduinoManager.connect()
         arduinoManager.init(this)
 
+
         // Add data from intent
         handleIntent(intent)
 
@@ -223,6 +224,14 @@ fun ArcProgressScreen(progress: Float) {
 // MainActivity
 // ----------------------
 
+data class AllRecords(
+    val rrData: List<Float>,   // RR intervals in ms
+    val time: String,          // e.g., "Morning"
+    val bpm: Float,            // Average BPM for the session
+    val rrInterval: Float,     // Average RR interval in ms
+    val dateTime: String       // Timestamp
+)
+
 data class ActivityRecord(
     val rrData: List<Float>,   // RR intervals in ms
     val time: String,          // e.g., "Morning"
@@ -258,43 +267,68 @@ fun SessionsForDayComposable() {
     var sessions by remember { mutableStateOf<List<SessionMetricsEntity>>(emptyList()) }
 
     // Store activity records here
+    // Store activity records AND all records here
     var activityRecords by remember { mutableStateOf<List<ActivityRecord>>(emptyList()) }
+    var allRecords by remember { mutableStateOf<List<AllRecords>>(emptyList()) }
 
     LaunchedEffect(Unit) {
-        sessions = db.sessionMetricsDao().getSessionsByDayId(122025)
+        sessions = db.sessionMetricsDao().getSessionsByDayId(122225)
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
 
         Log.d("MWA", "Sessions: ${sessions.size}")
 
         rrBySession = groupRRToListOfLists(allRR)
 
-        // Create and store activity records
-        activityRecords = sessions.mapIndexedNotNull { index, session ->
+        // Create and store BOTH types of records
+        val tempActivityRecords = mutableListOf<ActivityRecord>()
+        val tempAllRecords = mutableListOf<AllRecords>()
+
+        sessions.forEachIndexed { index, session ->
             val rrList = rrBySession.getOrNull(index) ?: emptyList()
 
             if (rrList.isNotEmpty()) {
-                ActivityRecord(
+                tempActivityRecords.add(ActivityRecord(
                     rrData = rrList,
                     time = getTimeOfDayMessage(session.sessionId),
                     bpm = session.bpm,
                     rrInterval = rrList.average().toFloat(),
                     dateTime = formatSessionTime(session.sessionId)
-                )
-            } else {
-                null
+                ))
+
+                tempAllRecords.add(AllRecords(
+                    rrData = rrList,
+                    time = getTimeOfDayMessage(session.sessionId),
+                    bpm = session.bpm,
+                    rrInterval = rrList.average().toFloat(),
+                    dateTime = formatSessionTime(session.sessionId)
+                ))
             }
         }
+
+        activityRecords = tempActivityRecords
+        allRecords = tempAllRecords
 
         // Log all records
         activityRecords.forEachIndexed { index, record ->
             Log.d("ActivityRecord", """
-                Record $index:
-                time: ${record.time}
-                dateTime: ${record.dateTime}
-                bpm: ${record.bpm}
-                rrInterval: ${record.rrInterval}
-                rmssd: ${record.rmssd}
-            """.trimIndent())
+            actvitity records
+            Record $index:
+            time: ${record.time}
+            dateTime: ${record.dateTime}
+            bpm: ${record.bpm}
+            rrInterval: ${record.rrInterval}
+        """.trimIndent())
+        }
+
+        allRecords.forEachIndexed { index, record ->
+            Log.d("ActivityRecord", """
+            all records
+            Record $index:
+            time: ${record.time}
+            dateTime: ${record.dateTime}
+            bpm: ${record.bpm}
+            rrInterval: ${record.rrInterval}
+        """.trimIndent())
         }
     }
 
@@ -358,30 +392,36 @@ fun SessionsForDayToActivityList() {
 fun HomeActivityScreen(activityList: List<ActivityRecord>) {
     val scrollState = rememberScrollState()
 
+    var allActivityRecords by remember { mutableStateOf<List<ActivityRecord>>(emptyList()) }
+
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
 
-    SessionsForDayToActivityList()
+    // Load records and calculate health score
+    LaunchedEffect(Unit) {
+        val sessions = db.sessionMetricsDao().getSessionsByDayId(122225)
+        val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
+        val rrBySession = groupRRToListOfLists(allRR)
 
-    // Log all activity records
-    Log.d("HomeActivity", "Total Activity Records: ${activityList.size}")
-
-    activityList.forEachIndexed { index, record ->
-        Log.d("HomeActivity", """
-            =====================================
-            Record ${index + 1}/${activityList.size}:
-            - Time: ${record.time}
-            - DateTime: ${record.dateTime}
-            - BPM: ${record.bpm}
-            - RR Interval: ${record.rrInterval}
-            - RR Data Size: ${record.rrData.size}
-            - RMSSD: ${record.rmssd}
-            =====================================
-        """.trimIndent())
+        val tempRecords = mutableListOf<ActivityRecord>()
+        sessions.forEachIndexed { index, session ->
+            val rrList = rrBySession.getOrNull(index) ?: emptyList()
+            if (rrList.isNotEmpty()) {
+                tempRecords.add(ActivityRecord(
+                    rrData = rrList,
+                    time = getTimeOfDayMessage(session.sessionId),
+                    bpm = session.bpm,
+                    rrInterval = rrList.average().toFloat(),
+                    dateTime = formatSessionTime(session.sessionId)
+                ))
+            }
+        }
+        allActivityRecords = tempRecords
     }
 
-    val healthScore =  HealthScoreCalculator.calculate(
-        activityList
+    // Calculate health score from ALL records (DB + intent)
+    val healthScore = HealthScoreCalculator.calculate(
+        allActivityRecords + activityList  // Combine both lists
     )
 
     Column(modifier = Modifier
@@ -463,7 +503,7 @@ fun ActivityLog(lineGraphData: List<Float>,
                     verticalArrangement = Arrangement.Center// Add this
                 ) {
 
-                    Text(text = dayTime, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(text = dayTime, fontWeight = FontWeight.Bold, fontSize = 14.sp)
 
                     Text(text = testTime, fontWeight = FontWeight.Bold)
 
