@@ -79,3 +79,11 @@ fun getTimeOfDayMessage(sessionId: Long): String {
         else -> "EVENING TEST"
     }
 }
+
+// Helper to extract date part from dateTime string
+fun extractDateFromDateTime(dateTime: String): String {
+    // Take only the first 6 characters (MMDDYY) which matches formatDateToMMDDYY
+    return dateTime.take(6)
+}
+
+

@@ -303,6 +303,7 @@ fun SessionsForDayComposable(viewModel: HomeViewModel) {
     var allRecords by remember { mutableStateOf<List<AllRecords>>(emptyList()) }
 
     LaunchedEffect(viewModel.selectedDate) {
+
         sessions = db.sessionMetricsDao().getSessionsByDayId(formatDateToMMDDYY(viewModel.selectedDate).toInt())
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
 
@@ -427,16 +428,19 @@ fun HomeActivityScreen(
     viewModel: HomeViewModel
 ) {
     val scrollState = rememberScrollState()
-
-    var allActivityRecords by remember { mutableStateOf<List<ActivityRecord>>(emptyList()) }
-
-    val date = viewModel.selectedDate
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
 
-    // Load records and calculate health score
+    // State for DB records
+    var allActivityRecords by remember { mutableStateOf<List<ActivityRecord>>(emptyList()) }
+
+    // Local state to accumulate displayed records
+    val accumulatedRecords = remember { mutableStateListOf<ActivityRecord>() }
+
+    // Load DB records whenever selectedDate changes
     LaunchedEffect(viewModel.selectedDate) {
-        val sessions = db.sessionMetricsDao().getSessionsByDayId(formatDateToMMDDYY(viewModel.selectedDate).toInt())
+        val sessions = db.sessionMetricsDao()
+            .getSessionsByDayId(formatDateToMMDDYY(viewModel.selectedDate).toInt())
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
         val rrBySession = groupRRToListOfLists(allRR)
 
@@ -444,70 +448,81 @@ fun HomeActivityScreen(
         sessions.forEachIndexed { index, session ->
             val rrList = rrBySession.getOrNull(index) ?: emptyList()
             if (rrList.isNotEmpty()) {
-                tempRecords.add(ActivityRecord(
-                    rrData = rrList,
-                    time = getTimeOfDayMessage(session.sessionId),
-                    bpm = session.bpm,
-                    rrInterval = rrList.average().toFloat(),
-                    dateTime = formatSessionTime(session.sessionId)
-                ))
+                tempRecords.add(
+                    ActivityRecord(
+                        rrData = rrList,
+                        time = getTimeOfDayMessage(session.sessionId),
+                        bpm = session.bpm,
+                        rrInterval = rrList.average().toFloat(),
+                        dateTime = formatSessionTime(session.sessionId)
+                    )
+                )
             }
         }
         allActivityRecords = tempRecords
+
+        // Reset accumulated records to DB + current activityList filtered
+        val filteredList = activityList.filter { it.dateTime.startsWith(formatDate(viewModel.selectedDate)) }
+        accumulatedRecords.clear()
+        accumulatedRecords.addAll(allActivityRecords + filteredList)
     }
 
-    // Calculate health score from ALL records (DB + intent)
-    val healthScore = HealthScoreCalculator.calculate(
-        allActivityRecords + activityList  // Combine both lists
-    )
+    // Observe activityList and append any new records for the selected date
+    LaunchedEffect(activityList) {
+        val newRecords = activityList.filter {
+            it.dateTime.startsWith(formatDate(viewModel.selectedDate)) && !accumulatedRecords.contains(it)
+        }
+        accumulatedRecords.addAll(newRecords)
+    }
 
-    Column(modifier = Modifier
-        .verticalScroll(scrollState)
-        .padding(top = 20.dp, bottom = 30.dp, start = 20.dp, end = 20.dp)
-        .fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally) {
+    // Health score based on accumulated records
+    val healthScore = HealthScoreCalculator.calculate(accumulatedRecords)
 
-        var format by remember {mutableStateOf(Date()) }
+    Column(
+        modifier = Modifier
+            .verticalScroll(scrollState)
+            .padding(top = 20.dp, bottom = 30.dp, start = 20.dp, end = 20.dp)
+            .fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
 
-
+        // Date selector row
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            Text("<", fontSize = 25.sp, fontWeight = FontWeight.Bold,
+            Text("<",
+                fontSize = 25.sp,
+                fontWeight = FontWeight.Bold,
                 color = Color.White,
-                modifier = Modifier
-                    .clickable {
-                        viewModel.decrementDate()
-                    })
+                modifier = Modifier.clickable { viewModel.decrementDate() }
+            )
             Spacer(modifier = Modifier.width(10.dp))
-
             Text(
                 text = formatDate(viewModel.selectedDate),
                 fontSize = 25.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
-
             Spacer(modifier = Modifier.width(10.dp))
-
-            Text(">", fontSize = 25.sp, fontWeight = FontWeight.Bold,
+            Text(">",
+                fontSize = 25.sp,
+                fontWeight = FontWeight.Bold,
                 color = Color.White,
-                modifier = Modifier
-                    .clickable{
-                        viewModel.incrementDate()
-                    })
+                modifier = Modifier.clickable { viewModel.incrementDate() }
+            )
         }
+
         Spacer(modifier = Modifier.height(20.dp))
 
-
+        // Health score progress
         ArcProgressScreen(progress = healthScore / 100f)
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        Text(text = "ACTIVITIES",
+        Text(
+            text = "ACTIVITIES",
             fontSize = 25.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
-            modifier = Modifier
-                .align(Alignment.Start),
+            modifier = Modifier.align(Alignment.Start)
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -516,7 +531,8 @@ fun HomeActivityScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        activityList.forEach { record ->
+        // Display all accumulated records
+        accumulatedRecords.forEach { record ->
             ActivityLog(
                 lineGraphData = record.rrData,
                 testTime = record.time,
