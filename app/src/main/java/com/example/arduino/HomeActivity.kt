@@ -12,6 +12,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
@@ -40,6 +41,9 @@ import androidx.room.PrimaryKey
 import com.example.arduino.data.AppDatabase
 import com.example.arduino.data.RRIntervalDao
 import com.example.arduino.data.SessionMetricsEntity
+import com.example.arduino.data.decrementDate
+import com.example.arduino.data.formatDate
+import com.example.arduino.data.formatDateToMMDDYY
 import kotlin.math.pow
 import kotlin.math.sqrt
 import com.example.arduino.data.getStartAndEndOfSpecificDay
@@ -47,11 +51,13 @@ import com.example.arduino.data.groupRRToListOfLists
 import com.example.arduino.data.formatSessionTime
 import com.example.arduino.data.generateDaySessionId
 import com.example.arduino.data.getTimeOfDayMessage
+import com.example.arduino.data.incrementDate
 import kotlinx.coroutines.launch
+import java.util.Date
 import kotlin.random.Random
 import kotlin.toString
 
-val date: Int = generateDaySessionId().toInt()
+
 class HomeActivity : ComponentActivity() {
 
     private val viewModel: HomeViewModel by viewModels()
@@ -74,7 +80,7 @@ class HomeActivity : ComponentActivity() {
 
         setContent {
             Dashboard {
-                HomeActivityScreen(activityList = viewModel.activityList)
+                HomeActivityScreen(activityList = viewModel.activityList, viewModel = viewModel)
             }
         }
     }
@@ -265,12 +271,25 @@ data class ActivityRecord(
 class HomeViewModel : ViewModel() {
     val activityList = mutableStateListOf<ActivityRecord>()
     val predictedList = mutableStateListOf<List<Float>>() // store predicted graphs
+
+    var selectedDate by mutableStateOf(Date())
+        private set
+
+    fun incrementDate() {
+        selectedDate = incrementDate(selectedDate)
+    }
+
+    fun decrementDate() {
+        selectedDate = decrementDate(selectedDate)
+    }
 }
 
 @Composable
-fun SessionsForDayComposable() {
+fun SessionsForDayComposable(viewModel: HomeViewModel) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
+
+    val date = viewModel.selectedDate
 
     var rrBySession by remember {
         mutableStateOf<List<List<Float>>>(emptyList())
@@ -283,8 +302,8 @@ fun SessionsForDayComposable() {
     var activityRecords by remember { mutableStateOf<List<ActivityRecord>>(emptyList()) }
     var allRecords by remember { mutableStateOf<List<AllRecords>>(emptyList()) }
 
-    LaunchedEffect(Unit) {
-        sessions = db.sessionMetricsDao().getSessionsByDayId(date)
+    LaunchedEffect(viewModel.selectedDate) {
+        sessions = db.sessionMetricsDao().getSessionsByDayId(formatDateToMMDDYY(viewModel.selectedDate).toInt())
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
 
         Log.d("MWA", "Sessions: ${sessions.size}")
@@ -358,6 +377,8 @@ fun SessionsForDayComposable() {
         }
     }
 }
+
+/*
 @Composable
 fun SessionsForDayToActivityList() {
     val context = LocalContext.current
@@ -399,19 +420,23 @@ fun SessionsForDayToActivityList() {
         }
     }
 }
-
+*/
 @Composable
-fun HomeActivityScreen(activityList: List<ActivityRecord>) {
+fun HomeActivityScreen(
+    activityList: List<ActivityRecord>,
+    viewModel: HomeViewModel
+) {
     val scrollState = rememberScrollState()
 
     var allActivityRecords by remember { mutableStateOf<List<ActivityRecord>>(emptyList()) }
 
+    val date = viewModel.selectedDate
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
 
     // Load records and calculate health score
-    LaunchedEffect(Unit) {
-        val sessions = db.sessionMetricsDao().getSessionsByDayId(date)
+    LaunchedEffect(viewModel.selectedDate) {
+        val sessions = db.sessionMetricsDao().getSessionsByDayId(formatDateToMMDDYY(viewModel.selectedDate).toInt())
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
         val rrBySession = groupRRToListOfLists(allRR)
 
@@ -442,20 +467,34 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
         .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally) {
 
+        var format by remember {mutableStateOf(Date()) }
+
+
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text("<", fontSize = 25.sp, fontWeight = FontWeight.Bold,
-                color = Color.White)
+                color = Color.White,
+                modifier = Modifier
+                    .clickable {
+                        viewModel.decrementDate()
+                    })
             Spacer(modifier = Modifier.width(10.dp))
 
-            Text("Dec 8, 2025", fontSize = 25.sp, fontWeight = FontWeight.Bold,
-                color = Color.White)
+            Text(
+                text = formatDate(viewModel.selectedDate),
+                fontSize = 25.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
 
             Spacer(modifier = Modifier.width(10.dp))
 
             Text(">", fontSize = 25.sp, fontWeight = FontWeight.Bold,
-                color = Color.White)
+                color = Color.White,
+                modifier = Modifier
+                    .clickable{
+                        viewModel.incrementDate()
+                    })
         }
-
         Spacer(modifier = Modifier.height(20.dp))
 
 
@@ -473,7 +512,7 @@ fun HomeActivityScreen(activityList: List<ActivityRecord>) {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        SessionsForDayComposable()
+        SessionsForDayComposable(viewModel = viewModel)
 
         Spacer(modifier = Modifier.height(10.dp))
 

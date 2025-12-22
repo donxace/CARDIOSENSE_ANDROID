@@ -3,6 +3,8 @@ package com.example.arduino.data
 import android.util.Log
 import java.util.Calendar
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -34,6 +36,37 @@ fun generateDaySessionId(date: Date = Date()): Long {
     return dayString.toLong()  // e.g., Dec 19, 2025 -> 121925
 
 }
+
+
+fun formatDate(date: Date): String {
+    val formatter = SimpleDateFormat("MMMM dd, yyyy", Locale.ENGLISH)
+    return formatter.format(date)
+}
+
+fun incrementDate(currentDate: Date): Date {
+    val calendar = Calendar.getInstance()
+    calendar.time = currentDate
+    calendar.add(Calendar.DAY_OF_MONTH, 1)
+    return calendar.time
+}
+
+fun decrementDate(currentDate: Date): Date {
+    val calendar = Calendar.getInstance()
+    calendar.time = currentDate
+    calendar.add(Calendar.DAY_OF_MONTH, -1)
+    return calendar.time
+}
+
+fun formatDateToMMDDYY(date: Date): String {
+    val calendar = Calendar.getInstance()
+    calendar.time = date
+    val month = (calendar.get(Calendar.MONTH) + 1).toString().padStart(2, '0')
+    val day = calendar.get(Calendar.DAY_OF_MONTH).toString().padStart(2, '0')
+    val year = (calendar.get(Calendar.YEAR) % 100).toString().padStart(2, '0')
+    return "$month$day$year"
+}
+
+
 
 fun getTimeOfDayMessage(sessionId: Long): String {
     val calendar = Calendar.getInstance()
