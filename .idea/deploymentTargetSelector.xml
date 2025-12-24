@@ -7,10 +7,10 @@
       </SelectionState>
       <SelectionState runConfigName="TimerActivity">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-12-20T14:59:42.831876200Z">
+        <DropdownSelection timestamp="2025-12-24T12:30:27.149591500Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="Default" identifier="serial=192.168.100.179:5555;connection=0a812396" />
+              <DeviceId pluginId="Default" identifier="serial=192.168.1.172:5555;connection=adca2f06" />
             </handle>
           </Target>
         </DropdownSelection>
@@ -29,6 +29,9 @@
           </Target>
         </DropdownSelection>
         <DialogSelection />
+      </SelectionState>
+      <SelectionState runConfigName="TimeDomainFeaturesActivity (1)">
+        <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>
   </component>

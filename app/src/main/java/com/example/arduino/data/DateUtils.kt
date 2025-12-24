@@ -34,7 +34,6 @@ fun generateDaySessionId(date: Date = Date()): Long {
     val sdf = SimpleDateFormat("MMddyy", Locale.getDefault())
     val dayString = sdf.format(date)
     return dayString.toLong()  // e.g., Dec 19, 2025 -> 121925
-
 }
 
 
@@ -80,10 +79,15 @@ fun getTimeOfDayMessage(sessionId: Long): String {
     }
 }
 
-// Helper to extract date part from dateTime string
-fun extractDateFromDateTime(dateTime: String): String {
-    // Take only the first 6 characters (MMDDYY) which matches formatDateToMMDDYY
-    return dateTime.take(6)
+fun mmddyyLongToDate(mmddyy: Long): Date? {
+    val sdf = SimpleDateFormat("MMddyy", Locale.getDefault())
+    return try {
+        sdf.parse(mmddyy.toString().padStart(6, '0')) // ensures leading zeros
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
 }
+
 
 
