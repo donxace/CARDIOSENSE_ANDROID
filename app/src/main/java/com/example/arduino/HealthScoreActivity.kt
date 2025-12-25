@@ -36,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +51,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.arduino.DashboardActivity.PieChartData
+import com.example.arduino.data.AppDatabase
+import com.example.arduino.util.calculateDailyHealthScore
+import com.example.arduino.util.calculateWeeklyHealthScore
+import com.example.arduino.util.startOfDay
+import com.example.arduino.util.weekStart
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.util.Calendar
 
 val heartRateData = listOf(10f, 40f, 67f, 78f)
 val heartRatePredicted = listOf(818f, 820f, 810f, 825f)
@@ -64,40 +74,28 @@ val pieData = listOf(
 
 class HealthScoreActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        val db = AppDatabase.getDatabase(this) // 'this' is a valid context
+        val sessionDao = db.sessionMetricsDao()
+        val dailyDao = db.dailyHealthScoreDao()
+        val weeklyDao = db.weeklyHealthScoreDao()
+
         super.onCreate(savedInstanceState)
         setContent {
             Dashboard {
                 HealthScoreScreen()
             }
         }
+        val now = System.currentTimeMillis()
+
+        CoroutineScope(Dispatchers.Main).launch {
+            calculateDailyHealthScore(sessionDao, dailyDao)
+            calculateWeeklyHealthScore(dailyDao, weeklyDao, weekStart(now))
+        }
+
     }
-}
 
-@Composable
-fun EnlargingBox(
-    modifier: Modifier = Modifier,
-    initialSize: Dp = 300.dp,
-    expandedSize: Dp = 600.dp,
-    color: Color = Color.White,
-    animationDuration: Int = 300,
-    content: @Composable BoxScope.() -> Unit = {}
-) {
-    var isExpanded by remember { mutableStateOf(false)}
 
-    val size by animateDpAsState(
-        targetValue = if (isExpanded) expandedSize else initialSize,
-        animationSpec = tween(durationMillis = animationDuration)
-    )
-
-    Box(
-        modifier = modifier
-            .size(size)
-            .clickable { isExpanded = !isExpanded }
-            .background(color),
-        contentAlignment = Alignment.Center
-    ) {
-        content()
-    }
 }
 
 @Composable
@@ -105,6 +103,7 @@ fun HealthScoreScreen() {
     val context = LocalContext.current
     val activity = context as Activity
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()  // Compose-aware coroutine scope
 
     var date by remember { mutableStateOf("NOVEMBER")}
 

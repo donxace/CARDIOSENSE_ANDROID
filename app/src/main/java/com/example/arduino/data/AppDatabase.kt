@@ -4,11 +4,18 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import android.content.Context
+import com.example.app.model.summary.WeeklyHealthScore
+import com.example.arduino.data.dao.DailyHealthScoreDao
+import com.example.arduino.data.dao.WeeklyHealthScoreDao
+import com.example.arduino.model.summary.DailyHealthScore
 
-@Database(entities = [RRInterval::class, SessionMetricsEntity::class], version = 3, exportSchema = false)
+@Database(entities = [RRInterval::class, SessionMetricsEntity::class, WeeklyHealthScore::class, DailyHealthScore::class], version = 5, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun rrIntervalDao(): RRIntervalDao
     abstract fun sessionMetricsDao(): SessionMetricsDao
+
+    abstract fun dailyHealthScoreDao(): DailyHealthScoreDao
+    abstract fun weeklyHealthScoreDao(): WeeklyHealthScoreDao
 
     companion object {
         @Volatile

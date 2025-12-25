@@ -12,6 +12,6 @@ data class SessionMetricsEntity(
     val rmssd: Float,
     val nn50: Int,
     val pnn50: Float,
-    val avgRR: Float
+    val avgRR: Float,
 )
 

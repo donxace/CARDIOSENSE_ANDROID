@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewModelScope
 import androidx.room.PrimaryKey
 import com.example.arduino.data.AppDatabase
 import com.example.arduino.data.RRInterval
@@ -53,6 +54,7 @@ import com.example.arduino.data.formatSessionTime
 import com.example.arduino.data.generateDaySessionId
 import com.example.arduino.data.getTimeOfDayMessage
 import com.example.arduino.data.incrementDate
+import com.example.arduino.util.calculateDailyHealthScore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -285,6 +287,9 @@ class HomeViewModel : ViewModel() {
     var selectedDate by mutableStateOf(Date())
         private set
 
+    private val _healthScore = MutableStateFlow(0f)
+    val healthScore: StateFlow<Float> = _healthScore
+
     fun incrementDate() {
         selectedDate = incrementDate(selectedDate)
     }
@@ -297,6 +302,14 @@ class HomeViewModel : ViewModel() {
 
     fun refreshSessions() {
         _refreshTrigger.value += 1
+    }
+
+    fun loadHealthScoreForSelectedDate(db: AppDatabase) {
+        viewModelScope.launch {
+            val dateLong = formatDateToMMDDYY(selectedDate).toLong()
+            val dailyScore = db.dailyHealthScoreDao().getByDate(dateLong)
+            _healthScore.value = dailyScore?.healthScore ?: 0f
+        }
     }
 }
 
@@ -320,6 +333,8 @@ fun SessionsForDayComposable(viewModel: HomeViewModel) {
     var allRecords by remember { mutableStateOf<List<AllRecords>>(emptyList()) }
 
     LaunchedEffect(viewModel.selectedDate, refreshTrigger) {
+
+        Log.d("SelectedDate123", "${formatDateToMMDDYY(viewModel.selectedDate)}")
 
         sessions = db.sessionMetricsDao().getSessionsByDayId(formatDateToMMDDYY(viewModel.selectedDate).toInt())
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
@@ -444,9 +459,17 @@ fun HomeActivityScreen(
     activityList: List<ActivityRecord>,
     viewModel: HomeViewModel
 ) {
+
+    val healthScore by viewModel.healthScore.collectAsState()
+
+
+
+
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
+    val sessionDao = db.sessionMetricsDao()
+    val dailyDao = db.dailyHealthScoreDao()
 
     val refreshTrigger by viewModel.refreshTrigger.collectAsState()
 
@@ -458,6 +481,10 @@ fun HomeActivityScreen(
 
     // Load DB records whenever selectedDate changes
     LaunchedEffect(viewModel.selectedDate, refreshTrigger) {
+        calculateDailyHealthScore(sessionDao, dailyDao)
+
+        viewModel.loadHealthScoreForSelectedDate(db)
+
         val sessions = db.sessionMetricsDao()
             .getSessionsByDayId(formatDateToMMDDYY(viewModel.selectedDate).toInt())
         val allRR = db.rrIntervalDao().getAllRRIntervalsOrdered()
@@ -494,9 +521,6 @@ fun HomeActivityScreen(
         accumulatedRecords.addAll(newRecords)
     }
 
-    // Health score based on accumulated records
-    val healthScore = HealthScoreCalculator.calculate(accumulatedRecords)
-
     Column(
         modifier = Modifier
             .verticalScroll(scrollState)
@@ -520,6 +544,7 @@ fun HomeActivityScreen(
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
+
             Spacer(modifier = Modifier.width(10.dp))
             Text(">",
                 fontSize = 25.sp,
