@@ -9,7 +9,7 @@ import com.example.arduino.data.dao.DailyHealthScoreDao
 import com.example.arduino.data.dao.WeeklyHealthScoreDao
 import com.example.arduino.model.summary.DailyHealthScore
 
-@Database(entities = [RRInterval::class, SessionMetricsEntity::class, WeeklyHealthScore::class, DailyHealthScore::class], version = 5, exportSchema = false)
+@Database(entities = [RRInterval::class, SessionMetricsEntity::class, WeeklyHealthScore::class, DailyHealthScore::class], version = 6, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun rrIntervalDao(): RRIntervalDao
     abstract fun sessionMetricsDao(): SessionMetricsDao

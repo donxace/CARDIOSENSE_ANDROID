@@ -11,6 +11,9 @@ interface DailyHealthScoreDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(dailyHealthScore: DailyHealthScore)
 
+    @Query("SELECT * FROM daily_health_scores ORDER BY date ASC")
+    suspend fun getAll(): List<DailyHealthScore>
+
     @Query("SELECT * FROM daily_health_scores WHERE date = :date")
     suspend fun getByDate(date: Long): DailyHealthScore?
 
@@ -19,4 +22,12 @@ interface DailyHealthScoreDao {
 
     @Query("SELECT * FROM daily_health_scores WHERE date = :selectedDate")
     suspend fun getDailyScoreByDate(selectedDate: Long): DailyHealthScore?
+
+
+    @Query("SELECT * FROM daily_health_scores WHERE date BETWEEN :weekStart AND :weekEnd ORDER BY date ASC")
+    suspend fun getWeekScores(weekStart: String, weekEnd: String): List<DailyHealthScore>
+
+    @Query("SELECT * FROM daily_health_scores WHERE date = :date LIMIT 1")
+    suspend fun getScoreByDate(date: String): DailyHealthScore?
+
 }

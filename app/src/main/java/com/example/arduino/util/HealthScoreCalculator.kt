@@ -65,7 +65,7 @@ suspend fun calculateDailyHealthScore(
         val existingDaily = daoDaily.getByDate(mmddyy)
 
         val dailyScore = DailyHealthScore(
-            date = mmddyy, // MMDDYY as key
+            date = mmddyy.toString(), // MMDDYY as key
             healthScore = healthScore,
             totalSessions = sessions.size
         )

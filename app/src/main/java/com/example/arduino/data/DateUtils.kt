@@ -1,6 +1,7 @@
 package com.example.arduino.data
 
 import android.util.Log
+import com.example.arduino.model.summary.DailyHealthScore
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -106,4 +107,66 @@ fun groupSessionsByDay(sessions: List<SessionMetricsEntity>): Map<String, List<S
     }
 }
 
+fun mapScoresToDays(scores: List<DailyHealthScore>): List<Pair<String, DailyHealthScore>> {
+    val sdf = SimpleDateFormat("MMddyy", Locale.US)
+    val sdfDay = SimpleDateFormat("EEEE", Locale.US)
 
+    return scores.map { score ->
+        val date = sdf.parse(score.date.toString())!!
+        val dayName = sdfDay.format(date)  // Monday, Tuesday, etc.
+        dayName to score
+    }
+}
+
+fun getThisWeekStartEnd(): Pair<String, String> {
+    val calendar = Calendar.getInstance()
+    calendar.firstDayOfWeek = Calendar.MONDAY
+    calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY) // Monday
+
+    val sdf = SimpleDateFormat("MMddyy", Locale.US)
+    val weekStart = sdf.format(calendar.time) // e.g., "122925"
+
+    calendar.add(Calendar.DAY_OF_MONTH, 4) // Friday
+    val weekEnd = sdf.format(calendar.time) // e.g., "010226"
+
+    return weekStart to weekEnd
+}
+
+fun getDatesBetween(start: String, end: String): List<String> {
+    val sdf = SimpleDateFormat("MMddyy", Locale.US)
+    val startDate = sdf.parse(start)!!
+    val endDate = sdf.parse(end)!!
+
+    val calendar = Calendar.getInstance()
+    calendar.time = startDate
+
+    val dates = mutableListOf<String>()
+    while (!calendar.time.after(endDate)) {
+        dates.add(sdf.format(calendar.time))
+        calendar.add(Calendar.DAY_OF_MONTH, 1)
+    }
+    return dates
+}
+fun mapDatesToWeekdays(dates: List<String>): Map<String, String> {
+    val sdf = SimpleDateFormat("MMddyy", Locale.US)
+    val calendar = Calendar.getInstance()
+    val result = mutableMapOf<String, String>()
+
+    dates.forEach { dateStr ->
+        val date = sdf.parse(dateStr)
+        calendar.time = date!!
+        val dayOfWeek = when (calendar.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> "Monday"
+            Calendar.TUESDAY -> "Tuesday"
+            Calendar.WEDNESDAY -> "Wednesday"
+            Calendar.THURSDAY -> "Thursday"
+            Calendar.FRIDAY -> "Friday"
+            Calendar.SATURDAY -> "Saturday"
+            Calendar.SUNDAY -> "Sunday"
+            else -> ""
+        }
+        result[dateStr] = dayOfWeek
+    }
+
+    return result
+}

@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 // Daily
 @Entity(tableName = "daily_health_scores")
 data class DailyHealthScore(
-    @PrimaryKey val date: Long,    // start-of-day timestamp
+    @PrimaryKey val date: String,    // start-of-day timestamp
     val healthScore: Float,
     val totalSessions: Int? = null
 )

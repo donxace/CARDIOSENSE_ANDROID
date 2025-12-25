@@ -3,6 +3,7 @@ package com.example.arduino
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.LinearEasing
@@ -34,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,6 +54,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.arduino.DashboardActivity.PieChartData
 import com.example.arduino.data.AppDatabase
+import com.example.arduino.data.dao.DailyHealthScoreDao
+import com.example.arduino.data.getDatesBetween
+import com.example.arduino.data.getThisWeekStartEnd
+import com.example.arduino.data.mapScoresToDays
 import com.example.arduino.util.calculateDailyHealthScore
 import com.example.arduino.util.calculateWeeklyHealthScore
 import com.example.arduino.util.startOfDay
@@ -59,7 +65,10 @@ import com.example.arduino.util.weekStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
+import com.example.arduino.data.mapDatesToWeekdays
+import com.example.arduino.model.summary.DailyHealthScore
 
 val heartRateData = listOf(10f, 40f, 67f, 78f)
 val heartRatePredicted = listOf(818f, 820f, 810f, 825f)
@@ -71,8 +80,16 @@ val pieData = listOf(
     PieChartData(25f, Color(0XFF4B0900), "Thursday"),
     PieChartData(15f, Color(0XFF000000), "Friday")
 )
+data class DayHealthScore(
+    val dayName: String,
+    val date: String,
+    val healthScore: Float
+)
 
 class HealthScoreActivity : ComponentActivity() {
+
+    private val weekHealthScores = mutableStateListOf<DayHealthScore>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
 
         val db = AppDatabase.getDatabase(this) // 'this' is a valid context
@@ -80,10 +97,37 @@ class HealthScoreActivity : ComponentActivity() {
         val dailyDao = db.dailyHealthScoreDao()
         val weeklyDao = db.weeklyHealthScoreDao()
 
+        val (weekStart, weekEnd) = getThisWeekStartEnd()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val allDates = getDatesBetween(weekStart, weekEnd)
+            val results = mutableListOf<Pair<String, DailyHealthScore?>>()
+            val weekdayMap = mapDatesToWeekdays(allDates)
+
+            allDates.forEach { date ->
+                val score = dailyDao.getScoreByDate(date)
+                results.add(date to score) // <--- important
+                Log.d("HELLO123", "$date: ${score?.healthScore ?: 0f}")
+            }
+
+            Log.d("HELLO123", "weekStart: $weekStart, weekEnd: $weekEnd")
+            Log.d("HELLO123", "Rows returned: ${results.size}") // now this is correct
+
+            withContext(Dispatchers.Main) {
+                results.forEach { (date, score) ->
+                    val displayScore = score?.healthScore ?: 0f
+                    val dayName = weekdayMap[date] ?: "Unknown"
+                    Log.d("HELLO123", "$dayName ($date): $displayScore")
+                }
+            }
+        }
+
+
+
         super.onCreate(savedInstanceState)
         setContent {
             Dashboard {
-                HealthScoreScreen()
+                HealthScoreScreen(dailyDao = dailyDao)
             }
         }
         val now = System.currentTimeMillis()
@@ -99,11 +143,40 @@ class HealthScoreActivity : ComponentActivity() {
 }
 
 @Composable
-fun HealthScoreScreen() {
+fun HealthScoreScreen(dailyDao: DailyHealthScoreDao) {
     val context = LocalContext.current
     val activity = context as Activity
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()  // Compose-aware coroutine scope
+
+    val weekHealthScores = remember { mutableStateListOf<DayHealthScore>() }
+
+    LaunchedEffect(Unit) {
+        val (weekStart, weekEnd) = getThisWeekStartEnd()
+        val allDates = getDatesBetween(weekStart, weekEnd)
+        val weekdayMap = mapDatesToWeekdays(allDates)
+
+        val tempList = allDates.map { date ->
+            val score = dailyDao.getScoreByDate(date)
+            DayHealthScore(
+                dayName = weekdayMap[date] ?: "Unknown",
+                date = date,
+                healthScore = score?.healthScore ?: 0f
+            )
+        }
+        weekHealthScores.clear()
+        weekHealthScores.addAll(tempList)
+    }
+
+
+    val mondayScore = weekHealthScores.find { it.dayName == "Monday" }?.healthScore ?: 0f
+    val tuesdayScore = weekHealthScores.find { it.dayName == "Tuesday" }?.healthScore ?: 0f
+    val wednesdayScore = weekHealthScores.find { it.dayName == "Wednesday" }?.healthScore ?: 0f
+    val thursdayScore = weekHealthScores.find { it.dayName == "Thursday" }?.healthScore ?: 0f
+    val fridayScore = weekHealthScores.find { it.dayName == "Friday" }?.healthScore ?: 0f
+
+
+
 
     var date by remember { mutableStateOf("NOVEMBER")}
 
@@ -188,7 +261,7 @@ fun HealthScoreScreen() {
                                                         .size(8.dp) // circle diameter same as font size
                                                         .background(color = Color(0xFFF6391E), shape = CircleShape)
                                                 )
-                                                Text("   Tuesday", fontSize = 8.sp, color = Color.Black)
+                                                Text("   Tuesday: $tuesdayScore", fontSize = 8.sp, color = Color.Black)
                                             }
                                         }
                                     }
@@ -271,14 +344,19 @@ fun HealthScoreScreen() {
                             .fillMaxWidth().weight(1f)
                             .clip(RoundedCornerShape(16.dp))
                             .background(color = Color.White)
-                            .padding(20.dp)
+                            .padding(10.dp)
                             .clickable{
                                 context.startActivity(Intent(context, HealthScoreDetailed::class.java))
                             },
                         ) {
+
                             Column(modifier = Modifier
                                 .fillMaxWidth()
                                 .height(200.dp)) {
+
+
+
+
 
 
 
@@ -287,45 +365,54 @@ fun HealthScoreScreen() {
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.align(Alignment.CenterHorizontally))
 
-                                Spacer(modifier = Modifier.height(15.dp))
+                                Spacer(modifier = Modifier.height(5.dp))
 
-                                Text(text="WEEK 1",
+                                Text(text="MONDAY: $mondayScore",
                                     fontSize = 10.33.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.align(Alignment.Start))
 
-                                var percentWeek1 by remember { mutableStateOf(0.35f) }
-                                DynamicBar(progress = percentWeek1)
+                                DynamicBar(progress = mondayScore / 100)
 
                                 Spacer(modifier = Modifier.height(5.dp))
 
-                                Text(text="WEEK 2",
+                                val tuesdayScore = weekHealthScores.find { it.dayName == "Tuesday" }?.healthScore ?: 0f
+
+                                Text(text="TUESDAY: $tuesdayScore",
                                     fontSize = 10.33.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.align(Alignment.Start))
 
-                                var percentWeek2 by remember { mutableStateOf(0.5f) }
-                                DynamicBar(progress = percentWeek2)
+
+                                DynamicBar(progress = tuesdayScore / 100)
 
                                 Spacer(modifier = Modifier.height(5.dp))
 
-                                Text(text="WEEK 3",
+                                Text(text="WEDNESDAY: $wednesdayScore",
                                     fontSize = 10.33.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.align(Alignment.Start))
 
-                                var percentWeek3 by remember { mutableStateOf(0.8f) }
-                                DynamicBar(progress = percentWeek3)
+                                DynamicBar(progress = wednesdayScore / 100)
 
                                 Spacer(modifier = Modifier.height(5.dp))
 
-                                Text(text="WEEK 4",
+                                Text(text="THURSDAY: $thursdayScore",
                                     fontSize = 10.33.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.align(Alignment.Start))
 
-                                var percentWeek4 by remember { mutableStateOf(0.3f) }
-                                DynamicBar(progress = percentWeek4)
+
+                                DynamicBar(progress = thursdayScore / 100)
+
+                                Spacer(modifier = Modifier.height(5.dp))
+
+                                Text(text="FRIDAY: $fridayScore",
+                                    fontSize = 10.33.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.align(Alignment.Start))
+
+                                DynamicBar(progress = fridayScore / 100)
                             }
 
                         }
