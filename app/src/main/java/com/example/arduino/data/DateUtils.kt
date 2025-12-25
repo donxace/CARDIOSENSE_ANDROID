@@ -89,5 +89,21 @@ fun mmddyyLongToDate(mmddyy: Long): Date? {
     }
 }
 
+fun groupSessionsByWeek(sessions: List<SessionMetricsEntity>): Map<Int, List<SessionMetricsEntity>> {
+    val calendar = Calendar.getInstance()
+    return sessions.groupBy { session ->
+        calendar.timeInMillis = session.sessionId
+        calendar.get(Calendar.WEEK_OF_YEAR)  // returns 1..53
+    }
+}
+
+fun groupSessionsByDay(sessions: List<SessionMetricsEntity>): Map<String, List<SessionMetricsEntity>> {
+    val calendar = Calendar.getInstance()
+    return sessions.groupBy { session ->
+        calendar.timeInMillis = session.sessionId
+        // Format as "YYYY-MM-DD"
+        "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
+    }
+}
 
 

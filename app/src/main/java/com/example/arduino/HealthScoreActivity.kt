@@ -610,6 +610,33 @@ fun DynamicBar(
     }
 }
 
+
+@Composable
+fun LineGraphSimple(data: List<Float>) {
+    if (data.isEmpty()) return
+
+    val maxY = data.maxOrNull() ?: 100f
+    val minY = data.minOrNull() ?: 0f
+
+    Canvas(modifier = Modifier
+        .fillMaxWidth()
+        .height(250.dp)
+        .padding(horizontal = 20.dp, vertical = 20.dp)
+    ) {
+        val widthPerPoint = size.width / (data.size - 1)
+        val normalized = data.map { (it - minY) / (maxY - minY) }
+
+        val points = normalized.mapIndexed { index, fraction ->
+            Offset(x = index * widthPerPoint, y = size.height * (1f - fraction))
+        }
+
+        // Draw line
+        for (i in 0 until points.size - 1) {
+            drawLine(color = Color.Red, start = points[i], end = points[i + 1], strokeWidth = 5f)
+        }
+    }
+}
+
 @Composable
 fun LineGraph(
     data: List<Float>, // main data
@@ -622,14 +649,15 @@ fun LineGraph(
     val maxY = combined.maxOrNull() ?: 100f
     val minY = combined.minOrNull() ?: 0f
 
-    var animateProgress by remember { mutableStateOf(0f) }
+    var animateProgress by remember(data) { mutableStateOf(0f) }
     val progress by animateFloatAsState(
         targetValue = animateProgress,
         animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
     )
 
-    LaunchedEffect(Unit) {
-        animateProgress = 1f
+    LaunchedEffect(data) {
+        animateProgress = 0f
+        animateProgress = 1f   // restart animation when new data arrives
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {

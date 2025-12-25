@@ -27,8 +27,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.remote.creation.toFloat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +47,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.arduino.data.AppDatabase
 import com.example.arduino.data.SessionMetricsDao
@@ -68,6 +71,12 @@ class TimeDomainFeaturesActivity : ComponentActivity() {
         // Initialize DAO and Repository
         val dao = AppDatabase.getDatabase(this).sessionMetricsDao()
         val repository = SessionRepository(dao)
+        val db = AppDatabase.getDatabase(this)
+
+        CoroutineScope(Dispatchers.Main).launch {
+            viewModel.logAndGetDailyAverages(1000)
+            //insertFakeSessionsForNext20Days(db)
+        }
 
         // Initialize ViewModel using factory
         val factory = TimeDomainViewModelFactory(repository)
@@ -79,6 +88,8 @@ class TimeDomainFeaturesActivity : ComponentActivity() {
             }
         }
     }
+
+
 
 
     // Function to log session ranges
@@ -103,7 +114,7 @@ class TimeDomainFeaturesActivity : ComponentActivity() {
 
 
 
-var meanRRData = listOf(30f, 50f, 45f, 55f, 60f, 35f, 55f)
+var meanRRData = listOf(30f, 50f, 45f, 55f, 60f, 35f, 55.5f)
 
 @Composable
 fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
@@ -111,23 +122,45 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
     var selectedRange by remember { mutableStateOf("24h") }
     var averages by remember { mutableStateOf<SessionAverages?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    var metricsList by remember { mutableStateOf<List<SessionMetricsEntity>>(emptyList()) }
+
+
 
     fun loadAverages(range: String) {
-        selectedRange = range
         coroutineScope.launch {
+            selectedRange = range
             averages = when(range) {
                 "24h" -> viewModel.last24HoursAverages()
                 "14d" -> viewModel.last14DaysAverages()
                 "30d" -> viewModel.last30DaysAverages()
                 else -> viewModel.last24HoursAverages()
             }
+
+            metricsList = when(range) {
+                "24h" -> viewModel.last24HoursMetrics()
+                "14d" -> viewModel.last14DaysMetrics()
+                "30d" -> viewModel.last30DaysMetrics()
+                else -> viewModel.last24HoursMetrics()
+            }
+
             Log.d("SessionMetrics", "Loaded $range averages: $averages")
+            Log.d("SessionMetricsAverages", "Loaded $range metrics: ${metricsList.map { it.avgRR }}")
+            Log.d("SessionMetrics", "METRICS: {$metricsList}")
         }
     }
 
+    val rmssdList by remember(metricsList) { mutableStateOf(metricsList.map { it.rmssd }) }
+    val nn50List by remember(metricsList) { mutableStateOf(metricsList.map { it.nn50.toFloat() }) }
+    val rrList   by remember(metricsList) { mutableStateOf(metricsList.map { it.avgRR }) }
+    val bpmList  by remember(metricsList) { mutableStateOf(metricsList.map { it.bpm }) }
+    val sdnnList by remember(metricsList) { mutableStateOf(metricsList.map { it.sdnn }) }
+
+
+
+
     // LaunchedEffect to call suspend functions once
     LaunchedEffect(Unit) {
-        averages = viewModel.last24HoursAverages()
+        loadAverages("24h")
         // 24 hours
         val avg24h = viewModel.last24HoursAverages()
         Log.d("SessionMetrics", "=== Last 24 Hours ===")
@@ -147,16 +180,6 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
         Log.d("SessionMetrics", "Avg NN50: ${avg14d.avgNN50}")
         Log.d("SessionMetrics", "Avg PNN50: ${avg14d.avgPNN50}")
         Log.d("SessionMetrics", "Avg RR: ${avg14d.avgRR}")
-
-        // 30 days
-        val avg30d = viewModel.last30DaysAverages()
-        Log.d("SessionMetrics", "=== Last 30 Days ===")
-        Log.d("SessionMetrics", "Avg BPM: ${avg30d.avgBPM}")
-        Log.d("SessionMetrics", "Avg SDNN: ${avg30d.avgSDNN}")
-        Log.d("SessionMetrics", "Avg RMSSD: ${avg30d.avgRMSSD}")
-        Log.d("SessionMetrics", "Avg NN50: ${avg30d.avgNN50}")
-        Log.d("SessionMetrics", "Avg PNN50: ${avg30d.avgPNN50}")
-        Log.d("SessionMetrics", "Avg RR: ${avg30d.avgRR}")
     }
 
     val context = LocalContext.current
@@ -202,8 +225,9 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
                             context.startActivity(Intent(context, HealthScoreActivity::class.java))
                             activity.overridePendingTransition(
                                 android.R.anim.fade_in,
-                                android.R.anim.fade_out)
-                    }
+                                android.R.anim.fade_out
+                            )
+                        }
                 )
             }
         }
@@ -228,8 +252,7 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
                         .weight(1f)
                         .padding(10.dp)
                         .clickable {
-                            selectedRange = "24h"
-                             loadAverages("24h")
+                            loadAverages("24h")
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -245,29 +268,11 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
                         .weight(1f)
                         .padding(10.dp)
                         .clickable {
-                            selectedRange = "14d"
                             loadAverages("14d")
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Last 30 Days", fontWeight = FontWeight.ExtraBold)
-                }
-
-                Spacer(modifier = Modifier.width(5.dp))
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(if (selectedRange == "30d") Color.LightGray else Color.White)
-                        .weight(1f)
-                        .padding(10.dp)
-                        .clickable {
-                            selectedRange = "30d"
-                            loadAverages("30d")
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Last 30 Days", fontWeight = FontWeight.ExtraBold)
+                    Text("14 Days", fontWeight = FontWeight.ExtraBold)
                 }
             }
         }
@@ -298,7 +303,7 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
                     Text("WEEK 4", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
 
-                LineGraph(data = meanRRData, predicted = null)
+                LineGraph(rmssdList)
             }
         }
 
@@ -325,7 +330,7 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
                     Text("WEEK 4", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
 
-                LineGraph(data = meanRRData, predicted = null)
+                LineGraph(data = nn50List, predicted = null)
             }
         }
 
@@ -352,7 +357,7 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
                     Text("WEEK 4", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
 
-                LineGraph(data = meanRRData, predicted = null)
+                LineGraph(data = rrList, predicted = null)
             }
         }
 
@@ -377,7 +382,7 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
                     Text("WEEK 4", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
 
-                LineGraph(data = meanRRData, predicted = null)
+                LineGraph(data = bpmList, predicted = null)
             }
         }
 
@@ -404,7 +409,7 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
                     Text("WEEK 4", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
 
-                LineGraph(data = meanRRData, predicted = null)
+                LineGraph(data = sdnnList, predicted = null)
             }
         }
 
@@ -419,7 +424,9 @@ fun TimeDomainFeaturesScreen(viewModel: TimeDomainViewModel) {
             contentAlignment = Alignment.Center
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 5.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {

@@ -39,6 +39,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.room.PrimaryKey
 import com.example.arduino.data.AppDatabase
+import com.example.arduino.data.RRInterval
 import com.example.arduino.data.RRIntervalDao
 import com.example.arduino.data.SessionMetricsEntity
 import com.example.arduino.data.decrementDate
@@ -55,7 +56,9 @@ import com.example.arduino.data.incrementDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import java.util.Date
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 import kotlin.toString
 
@@ -73,7 +76,6 @@ class HomeActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             val db = AppDatabase.getDatabase(this@HomeActivity)
-            insertFakeSessionData(db)
         }
 
         // Add data from intent
@@ -648,22 +650,54 @@ fun ActivityLog(lineGraphData: List<Float>,
     }
 }
 
-suspend fun insertFakeSessionData(db: AppDatabase) {
+suspend fun insertFakeSessionsForNext20Days(db: AppDatabase) {
     val dao = db.rrIntervalDao()
+    val calendar = Calendar.getInstance().apply {
+        add(Calendar.DAY_OF_YEAR, 1) // start from tomorrow
+    }
 
-    // Generate multiple fake sessions
-    repeat(5) { index ->
+    repeat(20) { dayIndex ->
+        // 1️⃣ Format sessionStartTime as MMDDYY
+        val sessionStartTime = 122725L
+
+        // sessionId can still use system millis for uniqueness
+        val sessionId = 1766839524000 + dayIndex
+
+        // 2️⃣ Generate 20 random RR intervals with the same timestamp
+        val rrIntervals = List(20) {
+            val rrValue = Random.nextFloat() * 300f + 600f // 600–900 ms
+            RRInterval(
+                sessionId = sessionId,
+                sessionStartTime = sessionId,
+                timestamp = sessionStartTime, // same for all RR intervals
+                rrValue = rrValue
+            )
+        }
+
+        dao.insertAll(rrIntervals)
+
+        // 3️⃣ Calculate averages for SessionMetricsEntity
+        val avgBPM = (65..80).random().toFloat()
+        val avgSDNN = (40..60).random().toFloat()
+        val avgRMSSD = rrIntervals.map { it.rrValue }.average().toFloat()
+        val avgNN50 = (100..150).random()
+        val avgPNN50 = Random.nextFloat() * 10f + 10f
+        val avgRR = rrIntervals.map { it.rrValue }.average().toFloat()
+
         dao.insertMetrics(
             SessionMetricsEntity(
-                sessionId = index.toLong() + 1,
-                sessionStartTime = 122625L, // Same day
-                bpm = (65..80).random().toFloat(),
-                sdnn = (40..60).random().toFloat(),
-                rmssd = (35..50).random().toFloat(),
-                nn50 = (100..150).random(),
-                pnn50 = Random.nextFloat() * (20f - 10f) + 10f,  // Random between 10f and 20f
-                avgRR = Random.nextFloat() * (900f - 750f) + 750f  // Random between 750f and 900f
+                sessionId = sessionId,
+                sessionStartTime = sessionStartTime,
+                bpm = avgBPM,
+                sdnn = avgSDNN,
+                rmssd = avgRMSSD,
+                nn50 = avgNN50,
+                pnn50 = avgPNN50,
+                avgRR = avgRR
             )
         )
+
+        // Move to next day
+        calendar.add(Calendar.DAY_OF_YEAR, 1)
     }
 }

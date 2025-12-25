@@ -56,6 +56,7 @@ dependencies {
 
 // Kotlin extensions and coroutines support
     implementation("androidx.room:room-ktx:2.6.0")
+    implementation(libs.androidx.compose.remote.creation.core)
 
 // KAPT compiler
     kapt("androidx.room:room-compiler:2.6.0")
